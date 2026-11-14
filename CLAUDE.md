@@ -63,6 +63,22 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
 - Un fichier `"use server"` n'exporte QUE des fonctions asynchrones. Les constantes partagées vont dans un fichier ordinaire.
 - Ne jamais lancer `npm run build` pendant que `npm run dev` tourne.
 
+## Next.js 16 — particularités de ce projet
+- Lire `AGENTS.md` : la doc de la version installée est dans `node_modules/next/dist/docs/`.
+- `src/proxy.ts` remplace l'ancien `middleware.ts` : il redirige tout visiteur non connecté vers `/connexion`.
+- `cacheComponents` est DÉSACTIVÉ dans `next.config.ts` (tout est rendu à la demande).
+- Serveur de dev : `.claude/launch.json` (nom `mini-erp`, port 3000), lancé via `preview_start`.
+- Si Turbopack plante (« spawning node pooled process »), arrêter le serveur, `rm -rf .next`, relancer.
+- Après création d'une page : `npx next typegen` pour générer `PageProps` / `LayoutProps` avant `tsc`.
+
+## Organisation du code
+- `src/lib/supabase/serveur.ts` : client au nom de l'utilisateur (RLS appliquée).
+- `src/lib/supabase/admin.ts` : client clé secrète (`server-only`), uniquement après contrôle des droits.
+- `src/lib/session.ts` : `obtenirUtilisateurCourant()` (rôle lu dans profiles) et `exigerAdmin()`.
+- `src/lib/actions/*.ts` : actions serveur (`"use server"`, fonctions async uniquement).
+- `src/lib/roles.ts`, `src/lib/navigation.ts`, `src/lib/formulaires.ts` : constantes partagées.
+- Pages protégées dans `src/app/(app)/`, pages publiques dans `src/app/(public)/`.
+
 ## Interface
 Menu latéral dans l'ordre : Accueil, Commercial, RH, Finance, Absences, Utilisateurs.
 Finance et Utilisateurs visibles par un admin uniquement. Email et rôle affichés en permanence en bas du menu.
