@@ -67,6 +67,11 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
 - La vérification « êtes-vous admin ? » est refaite dans chaque action serveur.
 - Un admin ne peut ni se rétrograder ni se révoquer lui-même.
 
+## Avancement des règles RLS
+- `profiles`, `collaborateurs` : règles définitives (migration `securite_comptes`, 8 règles) + déclencheur
+  `empecher_auto_retrogradation`. Test réel : `node --env-file=.env.local scripts/tester-rls.mjs`.
+- Les 11 autres tables : encore sous la règle provisoire « tout connecté lit/écrit tout ».
+
 ## Pièges
 - `SUPABASE_SERVICE_ROLE_KEY` est SECRÈTE : jamais de préfixe `NEXT_PUBLIC_`, jamais commitée, utilisée seulement côté serveur (`import "server-only"`).
 - Un fichier `"use server"` n'exporte QUE des fonctions asynchrones. Les constantes partagées vont dans un fichier ordinaire.
