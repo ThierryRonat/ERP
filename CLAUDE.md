@@ -56,7 +56,17 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
 ## Scripts de vérification (préfixer PATH avec Node)
 - `node --env-file=.env.local scripts/verifier-supabase.mjs [--inscription-fermee]` : clés, comptes, profils, état de l'inscription.
 - `node --env-file=.env.local scripts/tester-compte-jetable.mjs` : crée un compte non admin, teste les pages, le supprime.
+- `node --env-file=.env.local scripts/tester-actions-directes.mjs <id-compte-jetable>` : appelle les actions
+  serveur de /utilisateurs sans passer par l'écran (non-admin, admin sur lui-même) et vérifie les refus.
+- `MDP_TEST=... node --env-file=.env.local scripts/controler-compte.mjs <email>` : état d'un compte + test de connexion.
 - Le compte admin de l'utilisateur est le seul compte permanent : ne jamais le modifier ni le supprimer dans les tests.
+- Comptes jetables : emails en `@exemple.test`, toujours supprimés à la fin (fiches de test aussi).
+
+## Écran Utilisateurs (`src/app/(app)/utilisateurs/`, actions dans `src/lib/actions/utilisateurs.ts`)
+- Révoquer = supprimer le compte de connexion (profil puis auth.users) ; la fiche collaborateur est conservée.
+- Mot de passe provisoire : généré côté serveur, affiché une fois, jamais stocké, masqué à l'action suivante.
+- changerRole / rattacherCompte / creerFicheEtRattacher passent par le client de SESSION (RLS appliquée en plus).
+- creerAcces / reinitialiserMotDePasse / revoquerAcces passent par le client admin, APRÈS `obtenirAdminOuNull()`.
 
 ## Sécurité
 - Fonctions `mon_role()`, `mon_collaborateur_id()`, `est_admin()` en **security definer** (sinon boucle RLS sur profiles qui bloque toute l'application), avec `set search_path = public`.

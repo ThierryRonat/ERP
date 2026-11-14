@@ -36,7 +36,16 @@ export const obtenirUtilisateurCourant = cache(async (): Promise<UtilisateurCour
   };
 });
 
-/** À appeler en tête de toute page ou action serveur réservée aux admins. */
+/**
+ * Pour les ACTIONS serveur : renvoie l'admin connecté, ou null s'il n'est pas admin.
+ * Le rôle est relu dans la base à chaque appel : on ne fait jamais confiance à l'écran.
+ */
+export async function obtenirAdminOuNull(): Promise<UtilisateurCourant | null> {
+  const utilisateur = await obtenirUtilisateurCourant();
+  return utilisateur.role === "admin" ? utilisateur : null;
+}
+
+/** À appeler en tête de toute page réservée aux admins. */
 export async function exigerAdmin(): Promise<UtilisateurCourant> {
   const utilisateur = await obtenirUtilisateurCourant();
   if (utilisateur.role !== "admin") redirect("/?refus=admin");
