@@ -34,6 +34,29 @@ else info("Inscription publique : encore ouverte (on la fermera à l'étape 5)")
 
 info(`Confirmation par email exigée : ${reglages.mailer_autoconfirm ? "non" : "oui"}`);
 
+// Preuve par l'essai : un inconnu tente de s'inscrire avec la clé PUBLIQUE.
+if (exigerFermeture) {
+  const emailIntrus = `intrus-${Date.now()}@exemple.test`;
+  const essai = await fetch(`${url}/auth/v1/signup`, {
+    method: "POST",
+    headers: { apikey: cleAnonyme, "Content-Type": "application/json" },
+    body: JSON.stringify({ email: emailIntrus, password: "MotDePasseIntrus-2026!" }),
+  });
+  const corps = await essai.json().catch(() => ({}));
+  if (essai.ok) {
+    ko(`Tentative d'inscription ACCEPTÉE (HTTP ${essai.status}) : l'inscription est ouverte !`);
+    if (corps.id || corps.user?.id) {
+      const id = corps.id ?? corps.user.id;
+      const h = cleSecrete.startsWith("eyJ") ? { apikey: cleSecrete, Authorization: `Bearer ${cleSecrete}` } : { apikey: cleSecrete };
+      await fetch(`${url}/rest/v1/profiles?id=eq.${id}`, { method: "DELETE", headers: h });
+      await fetch(`${url}/auth/v1/admin/users/${id}`, { method: "DELETE", headers: h });
+      info("Le compte intrus a été supprimé immédiatement.");
+    }
+  } else {
+    ok(`Tentative d'inscription REFUSÉE par Supabase (HTTP ${essai.status} : ${corps.msg ?? corps.error_code ?? corps.message})`);
+  }
+}
+
 // 2. Clé secrète : lecture de la liste des comptes et des profils
 // Ancienne clé (JWT "eyJ...") : on la passe aussi en Authorization. Nouvelle clé "sb_secret_..." : apikey seul.
 const entetesSecrets = cleSecrete.startsWith("eyJ")

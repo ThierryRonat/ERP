@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Pages accessibles sans être connecté.
-const PAGES_PUBLIQUES = ["/connexion", "/inscription"];
+const PAGES_PUBLIQUES = ["/connexion"];
 
 /**
  * S'exécute AVANT chaque page : rafraîchit la session et REDIRIGE

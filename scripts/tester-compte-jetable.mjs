@@ -62,6 +62,16 @@ try {
     verifier(p.statut !== 200 && (p.vers ?? "").includes("refus=admin"), `${chemin} tapé à la main → renvoyé à l'accueil`);
   }
   verifier((await page("/connexion")).statut === 307, "Déjà connecté : /connexion renvoie vers l'accueil");
+
+  // Page RH : ce que la RLS laisse voir selon le rattachement et le rôle
+  const nombreFiches = async () => (await page("/rh")).html.match(/data-testid="nombre-fiches">(\d+)</)?.[1];
+  const { count: total } = await admin.from("collaborateurs").select("id", { count: "exact", head: true });
+  verifier((await nombreFiches()) === "0", "Page RH, compte non rattaché : 0 fiche visible");
+  const { data: fiche } = await admin.from("collaborateurs").select("id").order("nom").limit(1).single();
+  await admin.from("profiles").update({ collaborateur_id: fiche.id }).eq("id", idJetable);
+  verifier((await nombreFiches()) === "1", "Page RH, collaborateur rattaché : 1 seule fiche visible");
+  await admin.from("profiles").update({ role: "manager" }).eq("id", idJetable);
+  verifier((await nombreFiches()) === String(total), `Page RH, manager : les ${total} fiches visibles`);
 } finally {
   if (idJetable) {
     await admin.from("profiles").delete().eq("id", idJetable);
