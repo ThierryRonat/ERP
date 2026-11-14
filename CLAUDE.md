@@ -48,6 +48,15 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
 - Rejouable quand même : `create or replace`, `drop policy if exists`, suppression des règles par balayage de `pg_policies` plutôt que par nom.
 - AUTO-VÉRIFIANT PAR ASSERTION : terminer chaque migration par un bloc `do $$ ... raise exception ... $$` qui fait échouer le déploiement si un contrôle ne passe pas.
 - En plpgsql, ne jamais passer une sous-requête en argument de `raise exception` : passer par une variable.
+- Mécanisme VÉRIFIÉ le 14/11/2026 (migration `controle_socle` appliquée). Délai : 2 à 3 minutes après l'envoi.
+- Envoi sur GitHub : l'utilisateur clique « Push origin » dans GitHub Desktop (pas de gh, pas de clé SSH).
+- Après chaque envoi : `node scripts/verifier-deploiement.mjs --attendre` (verdict de l'app Supabase sur GitHub).
+  Le journal « View Logs » de Supabase → Branches reste vide pour la production : ce n'est pas un signe de panne.
+
+## Scripts de vérification (préfixer PATH avec Node)
+- `node --env-file=.env.local scripts/verifier-supabase.mjs [--inscription-fermee]` : clés, comptes, profils, état de l'inscription.
+- `node --env-file=.env.local scripts/tester-compte-jetable.mjs` : crée un compte non admin, teste les pages, le supprime.
+- Le compte admin de l'utilisateur est le seul compte permanent : ne jamais le modifier ni le supprimer dans les tests.
 
 ## Sécurité
 - Fonctions `mon_role()`, `mon_collaborateur_id()`, `est_admin()` en **security definer** (sinon boucle RLS sur profiles qui bloque toute l'application), avec `set search_path = public`.
