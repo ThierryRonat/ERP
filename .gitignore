@@ -1,0 +1,19 @@
+# Dépendances et compilation
+node_modules/
+.next/
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# Secrets : JAMAIS sur GitHub
+.env
+.env.*
+!.env.exemple
+
+# Divers
+.DS_Store
+*.log
+.vercel
+supabase/.temp/
+supabase/.branches/
