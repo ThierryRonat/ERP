@@ -19,7 +19,8 @@ create or replace function public.creer_devis(
 returns uuid
 language plpgsql
 security definer
-set search_path = ''
+-- search_path = public : prochain_numero (déjà en base) cite « compteurs » sans préfixe
+set search_path = public, pg_temp
 as $$
 declare
   v_role text := public.mon_role();

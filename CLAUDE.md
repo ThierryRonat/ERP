@@ -63,6 +63,8 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
 - Un devis naît UNIQUEMENT par la fonction SQL `creer_devis(p_prospect_id, p_taux_tva, p_lignes jsonb)` :
   numéro + devis + lignes dans une seule transaction (aucun trou). Seul `devis.statut` est modifiable par l'API.
 - `prochain_numero` n'est plus appelable par anon/authenticated ; `compteurs` n'est plus accessible par l'API.
+- PIÈGE VÉCU : le vrai `prochain_numero` cite `compteurs` SANS préfixe `public.`. Toute fonction qui l'appelle doit
+  avoir `set search_path = public, pg_temp` (avec `search_path = ''` → « relation compteurs does not exist »).
 - Ordre des lignes de devis : `devis_lignes.created_at` (posé avec clock_timestamp() par creer_devis).
 
 ## Scripts de vérification (préfixer PATH avec Node)
