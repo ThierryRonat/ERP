@@ -53,6 +53,18 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
 - Après chaque envoi : `node scripts/verifier-deploiement.mjs --attendre` (verdict de l'app Supabase sur GitHub).
   Le journal « View Logs » de Supabase → Branches reste vide pour la production : ce n'est pas un signe de panne.
 
+- AVANT de faire envoyer une migration : la rejouer sur une base PostgreSQL locale jetable (PGlite) avec un
+  socle simplifié (`essai-sql/socle.sql` + `essayer.mjs` dans le dossier scratchpad ; à recréer si effacé).
+  Le vrai corps de `prochain_numero` n'y est qu'imité.
+
+## Conventions métier (décidées avec l'utilisateur)
+- `devis.tva` (et `factures.tva`) = MONTANT de TVA en euros. `total_ttc = total_ht + tva`. Le taux n'est pas stocké :
+  pour l'afficher, le recalculer (tva / total_ht × 100). Arrondi au centime par ligne, puis TVA arrondie au centime.
+- Un devis naît UNIQUEMENT par la fonction SQL `creer_devis(p_prospect_id, p_taux_tva, p_lignes jsonb)` :
+  numéro + devis + lignes dans une seule transaction (aucun trou). Seul `devis.statut` est modifiable par l'API.
+- `prochain_numero` n'est plus appelable par anon/authenticated ; `compteurs` n'est plus accessible par l'API.
+- Ordre des lignes de devis : `devis_lignes.created_at` (posé avec clock_timestamp() par creer_devis).
+
 ## Scripts de vérification (préfixer PATH avec Node)
 - `node --env-file=.env.local scripts/verifier-supabase.mjs [--inscription-fermee]` : clés, comptes, profils, état de l'inscription.
 - `node --env-file=.env.local scripts/tester-compte-jetable.mjs` : crée un compte non admin, teste les pages, le supprime.
