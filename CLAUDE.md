@@ -90,6 +90,8 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
 - Tests qui créent des devis : toujours supprimer les devis de test ET remettre `compteurs` (clé `devis_AAAA`)
   à sa valeur d'avant, sinon le premier vrai devis n'aura pas le bon numéro. Ne jamais le faire si un vrai devis
   a été créé entre-temps (trou).
+- `node --env-file=.env.local scripts/tester-rh.mjs` : module RH en contournant l'interface (collaborateur, manager,
+  admin jetables ; taux_horaire, garde-fou manager via l'API, actions en direct). Nettoie fiches/projets/comptes.
 - Calculs monétaires : `src/lib/montants.ts` (BigInt au centième, arrondi identique à PostgreSQL). Jamais de float.
 - `node --env-file=.env.local scripts/tester-pdf.mjs [dossier]` : devis piège → PDF téléchargé et son TEXTE relu
   (décodage WinAnsi des flux pdfkit). Nettoie et remet le compteur. Lire aussi le PDF avec l'outil Read (visuel).
@@ -138,6 +140,12 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
 - Serveur de dev : `.claude/launch.json` (nom `mini-erp`, port 3000), lancé via `preview_start`.
 - Si Turbopack plante (« spawning node pooled process »), arrêter le serveur, `rm -rf .next`, relancer.
 - Après création d'une page : `npx next typegen` pour générer `PageProps` / `LayoutProps` avant `tsc`.
+
+## Écran RH (`src/app/(app)/rh/`, actions dans `src/lib/actions/rh.ts`)
+- Onglets (?onglet=collaborateurs|projets|temps) via le composant partagé `src/composants/Onglets.tsx`.
+- Fiche collaborateur : `/rh/collaborateurs/nouveau` et `/rh/collaborateurs/[id]` (admin). Le taux est lu UNIQUEMENT
+  dans `[id]/page.tsx` avec `creerClientAdmin()` après `exigerAdmin()` ; écriture par le client de session (RLS).
+- Liste des managers : `managersPossibles()` (src/lib/rh.ts) = même règle que le déclencheur verifier_manager.
 
 ## Organisation du code
 - `src/lib/supabase/serveur.ts` : client au nom de l'utilisateur (RLS appliquée).

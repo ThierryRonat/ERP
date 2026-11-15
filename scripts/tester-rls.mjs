@@ -70,7 +70,7 @@ try {
     const { data: verif } = await admin.from("profiles").select("role").eq("id", id).single();
     verifier((modifRole?.length ?? 0) === 0 && verif.role === "collaborateur", "Collaborateur : ne peut PAS se donner le rôle admin");
 
-    const { data: modifFiche } = await client.from("collaborateurs").update({ poste: "piraté" }).eq("id", fiche.id).select();
+    const { data: modifFiche } = await client.from("collaborateurs").update({ poste: "piraté" }).eq("id", fiche.id).select("id");
     verifier((modifFiche?.length ?? 0) === 0, "Collaborateur : ne peut PAS modifier sa fiche");
 
     const { error: eIns } = await client.from("collaborateurs").insert({ nom: "Intrus", prenom: "Test", taux_horaire: 0 });
@@ -84,7 +84,7 @@ try {
     verifier(c?.length === total, `Manager : voit les ${total} fiches (vu : ${c?.length})`);
     const { data: p } = await client.from("profiles").select("id");
     verifier(p?.length === 1, `Manager : ne voit que son propre profil (vu : ${p?.length})`);
-    const { data: modifFiche } = await client.from("collaborateurs").update({ poste: "piraté" }).eq("id", fiche.id).select();
+    const { data: modifFiche } = await client.from("collaborateurs").update({ poste: "piraté" }).eq("id", fiche.id).select("id");
     verifier((modifFiche?.length ?? 0) === 0, "Manager : ne peut PAS modifier une fiche");
   }
 

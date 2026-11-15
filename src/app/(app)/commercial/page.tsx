@@ -11,6 +11,7 @@ import {
 import { depuisBase, formaterEuros } from "@/lib/montants";
 import { SelecteurStatutDevis } from "./SelecteurStatutDevis";
 import { FormulaireProspect } from "./FormulaireProspect";
+import { Onglets } from "@/composants/Onglets";
 
 const COULEURS_DEVIS: Record<StatutDevis, string> = {
   brouillon: "bg-slate-100 text-slate-700",
@@ -69,20 +70,15 @@ export default async function PageCommercial({ searchParams }: PageProps<"/comme
       </div>
 
       {/* ── Onglets ── */}
-      <nav role="tablist" aria-label="Sections du Commercial" className="flex gap-1 border-b border-slate-200">
-        <OngletLien
-          actif={onglet === "prospects"}
-          href="/commercial?onglet=prospects"
-          libelle="Prospects"
-          nombre={prospects?.length ?? 0}
-        />
-        <OngletLien
-          actif={onglet === "devis"}
-          href="/commercial?onglet=devis"
-          libelle="Devis"
-          nombre={devis?.length ?? 0}
-        />
-      </nav>
+      <Onglets
+        chemin="/commercial"
+        libelle="Sections du Commercial"
+        actif={onglet}
+        onglets={[
+          { cle: "prospects", libelle: "Prospects", nombre: prospects?.length ?? 0 },
+          { cle: "devis", libelle: "Devis", nombre: devis?.length ?? 0 },
+        ]}
+      />
 
       {/* ── Devis ── */}
       {onglet === "devis" && (
@@ -213,35 +209,5 @@ export default async function PageCommercial({ searchParams }: PageProps<"/comme
         </div>
       )}
     </section>
-  );
-}
-
-function OngletLien({
-  actif,
-  href,
-  libelle,
-  nombre,
-}: {
-  actif: boolean;
-  href: string;
-  libelle: string;
-  nombre: number;
-}) {
-  return (
-    <Link
-      href={href}
-      role="tab"
-      aria-selected={actif}
-      className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium ${
-        actif
-          ? "border-blue-700 text-blue-800"
-          : "border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900"
-      }`}
-    >
-      {libelle}{" "}
-      <span className={`ml-1 rounded-full px-1.5 py-0.5 text-xs ${actif ? "bg-blue-100" : "bg-slate-100"}`}>
-        {nombre}
-      </span>
-    </Link>
   );
 }
