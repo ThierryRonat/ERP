@@ -79,6 +79,16 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
   à sa valeur d'avant, sinon le premier vrai devis n'aura pas le bon numéro. Ne jamais le faire si un vrai devis
   a été créé entre-temps (trou).
 - Calculs monétaires : `src/lib/montants.ts` (BigInt au centième, arrondi identique à PostgreSQL). Jamais de float.
+- `node --env-file=.env.local scripts/tester-pdf.mjs [dossier]` : devis piège → PDF téléchargé et son TEXTE relu
+  (décodage WinAnsi des flux pdfkit). Nettoie et remet le compteur. Lire aussi le PDF avec l'outil Read (visuel).
+
+## PDF (devis)
+- `src/lib/pdf/devis-pdf.ts` : pdfkit en variante STANDALONE, importée par chemin
+  (`require("../../../node_modules/pdfkit/js/pdfkit.standalone.js")`) car absente des « exports » du paquet.
+- `pourPdf()` : remplace U+202F / U+00A0 (toLocaleString fr-FR) par une espace normale, et tout caractère
+  hors WinAnsi par « ? ». TOUT texte imprimé passe par `pourPdf()`.
+- Route : `GET /commercial/devis/[id]/pdf` (lecture par la session → RLS). Vérifié en build de production.
+- Émetteur imprimé : `src/lib/entreprise.ts` (à personnaliser par l'utilisateur).
 - Le compte admin de l'utilisateur est le seul compte permanent : ne jamais le modifier ni le supprimer dans les tests.
 - Comptes jetables : emails en `@exemple.test`, toujours supprimés à la fin (fiches de test aussi).
 

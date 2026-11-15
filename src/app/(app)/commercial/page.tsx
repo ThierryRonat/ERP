@@ -88,6 +88,7 @@ export default async function PageCommercial({ searchParams }: PageProps<"/comme
                 <th className="px-4 py-3 text-right font-medium">TVA</th>
                 <th className="px-4 py-3 text-right font-medium">Total TTC</th>
                 <th className="px-4 py-3 font-medium">Statut</th>
+                <th className="px-4 py-3 font-medium">PDF</th>
               </tr>
             </thead>
             <tbody>
@@ -118,12 +119,22 @@ export default async function PageCommercial({ searchParams }: PageProps<"/comme
                         </span>
                       )}
                     </td>
+                    <td className="px-4 py-3">
+                      <a
+                        href={`/commercial/devis/${d.id}/pdf`}
+                        download
+                        aria-label={`Télécharger le PDF du devis ${d.numero}`}
+                        className="whitespace-nowrap rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                      >
+                        ⬇ PDF
+                      </a>
+                    </td>
                   </tr>
                 );
               })}
               {devis?.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
+                  <td colSpan={8} className="px-4 py-6 text-center text-slate-500">
                     Aucun devis pour l&apos;instant.
                   </td>
                 </tr>

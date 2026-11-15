@@ -76,7 +76,9 @@ const compteur = async () => (await admin.from("compteurs").select("valeur").eq(
 const nbDevis = async () => (await admin.from("devis").select("id", { count: "exact", head: true })).count;
 const nbProspects = async () => (await admin.from("prospects").select("id", { count: "exact", head: true })).count;
 
-const compteurDepart = await compteur();
+const cleCompteur = `devis_${new Date().getFullYear()}`;
+const ligneCompteur = (await admin.from("compteurs").select("valeur").eq("cle", cleCompteur).maybeSingle()).data;
+const compteurDepart = ligneCompteur?.valeur ?? null; // null = aucune ligne au départ
 const devisDepart = new Set(((await admin.from("devis").select("id")).data ?? []).map((d) => d.id));
 
 try {
@@ -142,7 +144,8 @@ try {
   // Devis valide via l'action : numéro suivant, totaux recalculés (gros montant pour les milliers)
   r = await action(manager.cookie, "/commercial/devis/nouveau", "creerDevis", {},
     formulaireDevis(prospect.id, "5,5", [{ designation: "Mission longue", quantite: "12", prixUnitaire: "1 234,56" }]));
-  const { data: dm } = await admin.from("devis").select("numero, total_ht, tva, total_ttc").order("created_at", { ascending: false }).limit(1).single();
+  const { data: dm } = await admin.from("devis").select("numero, total_ht, tva, total_ttc").order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (!dm) throw new Error(`Le devis du manager n'a pas été créé. Réponse du serveur : ${r.statut} ${r.texte.slice(0, 300)}`);
   verifier((await compteur()) === avant + 1, `Manager : devis créé → ${dm.numero} (numéro suivant, sans trou)`);
   verifier(dm.total_ht === 14814.72 && dm.tva === 814.81 && dm.total_ttc === 15629.53,
     `Manager : totaux recalculés 12 × 1 234,56 à 5,5 % → HT ${dm.total_ht} / TVA ${dm.tva} / TTC ${dm.total_ttc}`);
@@ -166,8 +169,9 @@ try {
     await admin.from("profiles").delete().eq("id", id);
     await admin.auth.admin.deleteUser(id);
   }
-  await admin.from("compteurs").update({ valeur: compteurDepart }).eq("cle", `devis_${new Date().getFullYear()}`);
-  console.log(`ℹ️  Nettoyage : ${nouveaux.length} devis, ${prospectsCrees.length} prospect(s), ${comptes.length} comptes supprimés ; compteur remis à ${compteurDepart}`);
+  if (compteurDepart === null) await admin.from("compteurs").delete().eq("cle", cleCompteur);
+  else await admin.from("compteurs").update({ valeur: compteurDepart }).eq("cle", cleCompteur);
+  console.log(`ℹ️  Nettoyage : ${nouveaux.length} devis, ${prospectsCrees.length} prospect(s), ${comptes.length} comptes supprimés ; compteur remis à ${compteurDepart ?? "absent"}`);
 }
 
 process.exit(echecs ? 1 : 0);
