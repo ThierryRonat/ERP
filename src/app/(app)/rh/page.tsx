@@ -1,12 +1,22 @@
 import Link from "next/link";
 import { obtenirUtilisateurCourant } from "@/lib/session";
 import { creerClientServeur } from "@/lib/supabase/serveur";
-import { LIBELLES_STATUT_PROJET, nomComplet, type StatutProjet } from "@/lib/rh";
+import {
+  LIBELLES_STATUT_PROJET,
+  STATUTS_TEMPS,
+  STATUTS_TEMPS_SAISIE,
+  nomComplet,
+  peutValiderTemps,
+  type StatutProjet,
+  type StatutTemps,
+} from "@/lib/rh";
 import { Onglets } from "@/composants/Onglets";
 import { SelecteurStatutProjet } from "./SelecteurStatutProjet";
 import { FormulaireProjet } from "./FormulaireProjet";
+import { FormulaireTemps } from "./FormulaireTemps";
+import { ActionsTemps } from "./ActionsTemps";
 
-type Onglet = "collaborateurs" | "projets";
+type Onglet = "collaborateurs" | "projets" | "temps";
 
 const COULEURS_PROJET: Record<StatutProjet, string> = {
   en_cours: "bg-blue-100 text-blue-800",
@@ -18,17 +28,25 @@ export default async function PageRH({ searchParams }: PageProps<"/rh">) {
   const utilisateur = await obtenirUtilisateurCourant();
   const estAdmin = utilisateur.role === "admin";
   const { onglet: demande, fiche_enregistree } = await searchParams;
-  const onglet: Onglet = demande === "projets" ? "projets" : "collaborateurs";
+  const onglet: Onglet = demande === "projets" ? "projets" : demande === "temps" ? "temps" : "collaborateurs";
 
   // Lecture avec la SESSION : la RLS décide de ce qui est visible. taux_horaire n'est JAMAIS demandé ici.
   const supabase = await creerClientServeur();
-  const [{ data: fiches, error: e1 }, { data: projets, error: e2 }] = await Promise.all([
+  const [{ data: fiches, error: e1 }, { data: projets, error: e2 }, { data: temps, error: e3 }] = await Promise.all([
     supabase.from("collaborateurs").select("id, prenom, nom, email, poste, date_entree, manager_id").order("nom"),
     supabase
       .from("projets")
       .select("id, nom, statut, created_at, clients(nom), devis(numero)")
       .order("created_at", { ascending: false }),
+    supabase
+      .from("temps")
+      .select(
+        "id, collaborateur_id, date_saisie, heures, commentaire, statut, collaborateurs(prenom, nom), projets(nom)",
+      )
+      .order("date_saisie", { ascending: false })
+      .order("created_at", { ascending: false }),
   ]);
+  const e = e1 ?? e2 ?? e3;
 
   const parId = new Map((fiches ?? []).map((f) => [f.id, f]));
 
@@ -36,14 +54,17 @@ export default async function PageRH({ searchParams }: PageProps<"/rh">) {
     <section className="space-y-6">
       <div>
         <h1 className="mb-1 text-2xl font-semibold">RH</h1>
-        <p className="text-slate-600">Collaborateurs et projets.</p>
-        {(e1 || e2) && (
+        <p className="text-slate-600">Collaborateurs, projets et temps passés.</p>
+        {e && (
           <p role="alert" className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-            Lecture impossible : {(e1 ?? e2)?.message}
+            Lecture impossible : {e.message}
           </p>
         )}
         {typeof fiche_enregistree === "string" && fiche_enregistree && (
-          <p role="status" className="mt-4 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+          <p
+            role="status"
+            className="mt-4 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
+          >
             Fiche de <strong>{fiche_enregistree}</strong> enregistrée.
           </p>
         )}
@@ -56,8 +77,88 @@ export default async function PageRH({ searchParams }: PageProps<"/rh">) {
         onglets={[
           { cle: "collaborateurs", libelle: "Collaborateurs", nombre: fiches?.length ?? 0 },
           { cle: "projets", libelle: "Projets", nombre: projets?.length ?? 0 },
+          { cle: "temps", libelle: "Temps", nombre: temps?.length ?? 0 },
         ]}
       />
+
+      {/* ── Temps ── */}
+      {onglet === "temps" && (
+        <div role="tabpanel" aria-label="Temps">
+          <p className="mb-3 text-sm text-slate-600">
+            {peutValiderTemps(utilisateur.role)
+              ? "Vous voyez les temps de tous les collaborateurs et pouvez les valider."
+              : "Vous voyez vos propres temps. Vous pouvez les modifier tant qu'ils ne sont pas validés."}{" "}
+            Total affiché : <strong data-testid="total-heures">{totalHeures(temps ?? [])}</strong> h.
+          </p>
+          <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Date</th>
+                  <th className="px-4 py-3 font-medium">Collaborateur</th>
+                  <th className="px-4 py-3 font-medium">Projet</th>
+                  <th className="px-4 py-3 text-right font-medium">Heures</th>
+                  <th className="px-4 py-3 font-medium">Commentaire</th>
+                  <th className="px-4 py-3 font-medium">Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(temps ?? []).map((t) => {
+                  const collab = t.collaborateurs as unknown as { prenom: string | null; nom: string } | null;
+                  const projet = t.projets as unknown as { nom: string } | null;
+                  const statut = t.statut as StatutTemps;
+                  const estAuteur = t.collaborateur_id === utilisateur.collaborateurId;
+                  // Mêmes règles que la base : l'auteur bascule brouillon ↔ soumis tant que ce n'est pas validé ;
+                  // manager et admin choisissent parmi les 3 statuts.
+                  const statutsPossibles: StatutTemps[] = peutValiderTemps(utilisateur.role)
+                    ? [...STATUTS_TEMPS]
+                    : estAuteur && statut !== "valide"
+                      ? [...STATUTS_TEMPS_SAISIE]
+                      : [];
+                  const peutSupprimer = (estAuteur && statut !== "valide") || utilisateur.role === "admin";
+                  return (
+                    <tr key={t.id} className="border-b border-slate-100 last:border-0">
+                      <td className="whitespace-nowrap px-4 py-3 text-slate-700">
+                        {new Date(t.date_saisie).toLocaleDateString("fr-FR", { timeZone: "UTC" })}
+                      </td>
+                      <td className="px-4 py-3 text-slate-900">{collab ? nomComplet(collab) : "—"}</td>
+                      <td className="px-4 py-3 text-slate-700">{projet?.nom ?? "—"}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        {Number(t.heures).toLocaleString("fr-FR", { maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="px-4 py-3 text-slate-700">{t.commentaire ?? "—"}</td>
+                      <td className="px-4 py-3">
+                        <ActionsTemps
+                          tempsId={t.id}
+                          statut={statut}
+                          statutsPossibles={statutsPossibles}
+                          peutSupprimer={peutSupprimer}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+                {temps?.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-6 text-center text-slate-500">
+                      Aucun temps visible.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          {utilisateur.collaborateurId && (
+            <FormulaireTemps
+              collaborateurs={(fiches ?? [])
+                .filter((f) => f.id === utilisateur.collaborateurId)
+                .map((f) => ({ id: f.id, libelle: nomComplet(f) }))}
+              projets={(projets ?? []).filter((p) => p.statut === "en_cours").map((p) => ({ id: p.id, nom: p.nom }))}
+              aujourdhui={new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Paris" })}
+            />
+          )}
+        </div>
+      )}
 
       {/* ── Collaborateurs ── */}
       {onglet === "collaborateurs" && (
@@ -99,7 +200,13 @@ export default async function PageRH({ searchParams }: PageProps<"/rh">) {
                         {f.date_entree ? new Date(f.date_entree).toLocaleDateString("fr-FR", { timeZone: "UTC" }) : "—"}
                       </td>
                       <td className="px-4 py-3 text-slate-700">
-                        {manager ? nomComplet(manager) : f.manager_id ? <em className="text-slate-400">non visible</em> : "—"}
+                        {manager ? (
+                          nomComplet(manager)
+                        ) : f.manager_id ? (
+                          <em className="text-slate-400">non visible</em>
+                        ) : (
+                          "—"
+                        )}
                       </td>
                       {estAdmin && (
                         <td className="px-4 py-3 text-right">
@@ -203,4 +310,9 @@ async function ZoneCreationProjet() {
       return { id: d.id, libelle: `${d.numero} — ${p?.societe ?? p?.nom ?? ""}` };
     });
   return <FormulaireProjet clients={clients ?? []} devis={devisLibres} />;
+}
+
+function totalHeures(temps: { heures: number | string }[]): string {
+  const centiemes = temps.reduce((s, t) => s + Math.round(Number(t.heures) * 100), 0);
+  return (centiemes / 100).toLocaleString("fr-FR", { maximumFractionDigits: 2 });
 }

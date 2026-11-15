@@ -92,6 +92,8 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
   a été créé entre-temps (trou).
 - `node --env-file=.env.local scripts/tester-rh.mjs` : module RH en contournant l'interface (collaborateur, manager,
   admin jetables ; taux_horaire, garde-fou manager via l'API, actions en direct). Nettoie fiches/projets/comptes.
+- `node --env-file=.env.local scripts/tester-temps.mjs` : saisie des temps en contournant l'interface (listes =
+  règle d'insertion, actions et API attaquées, validation, base identique avant/après).
 - Calculs monétaires : `src/lib/montants.ts` (BigInt au centième, arrondi identique à PostgreSQL). Jamais de float.
 - `node --env-file=.env.local scripts/tester-pdf.mjs [dossier]` : devis piège → PDF téléchargé et son TEXTE relu
   (décodage WinAnsi des flux pdfkit). Nettoie et remet le compteur. Lire aussi le PDF avec l'outil Read (visuel).
@@ -105,6 +107,9 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
 - Émetteur imprimé : `src/lib/entreprise.ts` (à personnaliser par l'utilisateur).
 - Le compte admin de l'utilisateur est le seul compte permanent : ne jamais le modifier ni le supprimer dans les tests.
 - Comptes jetables : emails en `@exemple.test`, toujours supprimés à la fin (fiches de test aussi).
+- INCIDENT VÉCU (15/11/2026) : un test acceptait un devis sur un prospect RÉEL → la règle « devis accepté » a créé
+  client + projet et passé le prospect en gagné. Règle : un test ne travaille QUE sur des données jetables qu'il crée,
+  nettoie aussi les EFFETS DES DÉCLENCHEURS, et l'état de la base doit être identique avant/après (comparer).
 
 ## Écran Utilisateurs (`src/app/(app)/utilisateurs/`, actions dans `src/lib/actions/utilisateurs.ts`)
 - Révoquer = supprimer le compte de connexion (profil puis auth.users) ; la fiche collaborateur est conservée.

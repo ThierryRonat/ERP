@@ -41,3 +41,11 @@ export function managersPossibles(fiches: FicheResume[], ficheId: string | null)
   }
   return fiches.filter((f) => !subordonnes.has(f.id));
 }
+
+/** Statuts autorisés à la saisie par la règle d'insertion de la base. */
+export const STATUTS_TEMPS_SAISIE = ["brouillon", "soumis"] as const;
+
+/** Qui peut passer un temps en « validé » (règle temps_modification_encadrement). */
+export function peutValiderTemps(role: string | null): boolean {
+  return role === "admin" || role === "manager";
+}

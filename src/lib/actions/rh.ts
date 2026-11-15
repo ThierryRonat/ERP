@@ -6,8 +6,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { creerClientServeur } from "@/lib/supabase/serveur";
-import { obtenirAdminOuNull } from "@/lib/session";
-import { STATUTS_PROJET } from "@/lib/rh";
+import { obtenirAdminOuNull, obtenirUtilisateurCourant } from "@/lib/session";
+import { STATUTS_PROJET, STATUTS_TEMPS, STATUTS_TEMPS_SAISIE, peutValiderTemps } from "@/lib/rh";
 import { lireCentiemes, versTexteDecimal } from "@/lib/montants";
 import type { EtatFormulaire } from "@/lib/formulaires";
 
@@ -98,4 +98,83 @@ export async function changerStatutProjet(projetId: string, statut: string): Pro
 
   revalidatePath("/rh");
   return { succes: `Statut du projet « ${data[0].nom} » mis à jour.` };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Temps
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Saisit un temps. Chacun ne saisit QUE les siens (règle d'insertion de la base). */
+export async function saisirTemps(_etat: EtatFormulaire, donnees: FormData): Promise<EtatFormulaire> {
+  const moi = await obtenirUtilisateurCourant();
+  if (!moi.collaborateurId) return { erreur: "Votre compte n'est rattaché à aucune fiche : saisie impossible." };
+
+  const collaborateurId = String(donnees.get("collaborateur_id") ?? "");
+  const projetId = String(donnees.get("projet_id") ?? "");
+  const date = String(donnees.get("date_saisie") ?? "");
+  const heuresSaisies = String(donnees.get("heures") ?? "").trim();
+  const commentaire = String(donnees.get("commentaire") ?? "").trim() || null;
+  const statut = String(donnees.get("statut") ?? "brouillon");
+
+  if (collaborateurId !== moi.collaborateurId) return { erreur: "Vous ne pouvez saisir que vos propres temps." };
+  if (!UUID.test(projetId)) return { erreur: "Choisissez un projet dans la liste." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { erreur: "Date invalide." };
+  if (heuresSaisies === "") return { erreur: "Le nombre d'heures est obligatoire." };
+  const heures = lireCentiemes(heuresSaisies);
+  if (heures === null || heures === 0n || heures > 2400n)
+    return { erreur: "Nombre d'heures invalide : entre 0,01 et 24, 2 décimales maximum (ex. 7,5)." };
+  if (!(STATUTS_TEMPS_SAISIE as readonly string[]).includes(statut))
+    return { erreur: "À la saisie, le statut ne peut être que « Brouillon » ou « Soumis »." };
+
+  const supabase = await creerClientServeur();
+  const { error } = await supabase.from("temps").insert({
+    collaborateur_id: collaborateurId,
+    projet_id: projetId,
+    date_saisie: date,
+    heures: versTexteDecimal(heures),
+    commentaire,
+    statut,
+  });
+  if (error) {
+    return {
+      erreur: error.message.includes("row-level security")
+        ? "Refusé par la base : le projet n'est peut-être plus en cours."
+        : `Saisie impossible : ${messageBase(error.message)}`,
+    };
+  }
+
+  revalidatePath("/rh");
+  return { succes: `${heuresSaisies.replace(".", ",")} h enregistrées.` };
+}
+
+/** Change le statut d'un temps. Seuls manager et admin peuvent « valider ». */
+export async function changerStatutTemps(tempsId: string, statut: string): Promise<EtatFormulaire> {
+  const moi = await obtenirUtilisateurCourant();
+  if (!moi.collaborateurId) return { erreur: "Compte non rattaché." };
+  if (!UUID.test(tempsId)) return { erreur: "Temps introuvable." };
+  if (!(STATUTS_TEMPS as readonly string[]).includes(statut)) return { erreur: "Statut inconnu." };
+  if (statut === "valide" && !peutValiderTemps(moi.role)) return { erreur: "Seuls un manager ou un administrateur peuvent valider un temps." };
+
+  const supabase = await creerClientServeur();
+  const { data, error } = await supabase.from("temps").update({ statut }).eq("id", tempsId).select("id");
+  if (error) return { erreur: `Changement impossible : ${messageBase(error.message)}` };
+  if (!data?.length) return { erreur: "Temps introuvable, déjà validé, ou modification refusée par la base." };
+
+  revalidatePath("/rh");
+  return { succes: "Statut mis à jour." };
+}
+
+/** Supprime un temps (l'auteur tant qu'il n'est pas validé, ou l'admin). */
+export async function supprimerTemps(tempsId: string): Promise<EtatFormulaire> {
+  const moi = await obtenirUtilisateurCourant();
+  if (!moi.collaborateurId) return { erreur: "Compte non rattaché." };
+  if (!UUID.test(tempsId)) return { erreur: "Temps introuvable." };
+
+  const supabase = await creerClientServeur();
+  const { data, error } = await supabase.from("temps").delete().eq("id", tempsId).select("id");
+  if (error) return { erreur: `Suppression impossible : ${messageBase(error.message)}` };
+  if (!data?.length) return { erreur: "Temps introuvable, déjà validé, ou suppression refusée par la base." };
+
+  revalidatePath("/rh");
+  return { succes: "Temps supprimé." };
 }

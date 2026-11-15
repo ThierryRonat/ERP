@@ -83,7 +83,11 @@ const devisDepart = new Set(((await admin.from("devis").select("id")).data ?? []
 
 try {
   const { data: fiches } = await admin.from("collaborateurs").select("id, nom").order("nom");
-  const { data: prospect } = await admin.from("prospects").select("id").order("created_at").limit(1).single();
+  // Prospect JETABLE : depuis le module RH, accepter un devis crée un client et un projet et passe le
+  // prospect en « gagné ». Le test ne doit donc JAMAIS travailler sur un prospect réel.
+  const { data: prospect } = await admin.from("prospects")
+    .insert({ nom: "Prospect jetable commercial", societe: "Société jetable commercial" }).select("id").single();
+  prospectsCrees.push(prospect.id);
   const { data: unDevis } = await admin.from("devis").select("id, statut").limit(1).maybeSingle();
 
   // ── COLLABORATEUR ──
@@ -159,15 +163,26 @@ try {
   verifier(Boolean(e4), "Manager : modification directe d'un total via l'API → refusée");
   r = await action(manager.cookie, "/commercial", "changerStatutDevis", idm.id, "accepte");
   verifier((await admin.from("devis").select("statut").eq("id", idm.id).single()).data.statut === "accepte", "Manager : changement de statut → OK");
+  const { data: pj } = await admin.from("projets").select("id").eq("devis_id", idm.id);
+  const { data: pr } = await admin.from("prospects").select("statut, client_id").eq("id", prospect.id).single();
+  verifier(pj?.length === 1 && pr.statut === "gagne" && pr.client_id, "Devis accepté via l'écran → projet créé, client créé, prospect gagné (règle de la base)");
 } finally {
-  // Nettoyage : devis créés pendant CE test, prospects de test, comptes, compteur.
+  // Nettoyage : devis créés pendant CE test, et ce que la règle « devis accepté » a créé
+  // (projets, clients), prospects de test, comptes, compteur.
   const { data: tous } = await admin.from("devis").select("id");
   const nouveaux = (tous ?? []).filter((d) => !devisDepart.has(d.id)).map((d) => d.id);
+  const { data: clientsTest } = prospectsCrees.length
+    ? await admin.from("prospects").select("client_id").in("id", prospectsCrees)
+    : { data: [] };
+  const idsClients = (clientsTest ?? []).map((p) => p.client_id).filter(Boolean);
+  if (nouveaux.length) await admin.from("projets").delete().in("devis_id", nouveaux);
+  if (idsClients.length) await admin.from("projets").delete().in("client_id", idsClients);
   if (nouveaux.length) {
     await admin.from("devis_lignes").delete().in("devis_id", nouveaux);
     await admin.from("devis").delete().in("id", nouveaux);
   }
   if (prospectsCrees.length) await admin.from("prospects").delete().in("id", prospectsCrees);
+  if (idsClients.length) await admin.from("clients").delete().in("id", idsClients);
   for (const id of comptes) {
     await admin.from("profiles").delete().eq("id", id);
     await admin.auth.admin.deleteUser(id);
