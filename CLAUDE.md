@@ -73,6 +73,12 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
 - `node --env-file=.env.local scripts/tester-actions-directes.mjs <id-compte-jetable>` : appelle les actions
   serveur de /utilisateurs sans passer par l'écran (non-admin, admin sur lui-même) et vérifie les refus.
 - `MDP_TEST=... node --env-file=.env.local scripts/controler-compte.mjs <email>` : état d'un compte + test de connexion.
+- `node --env-file=.env.local scripts/tester-commercial.mjs` : droits du module Commercial (collaborateur/manager
+  jetables, actions appelées en direct via encodeReply, attaques API). Nettoie et REMET LE COMPTEUR à sa valeur de départ.
+- Tests qui créent des devis : toujours supprimer les devis de test ET remettre `compteurs` (clé `devis_AAAA`)
+  à sa valeur d'avant, sinon le premier vrai devis n'aura pas le bon numéro. Ne jamais le faire si un vrai devis
+  a été créé entre-temps (trou).
+- Calculs monétaires : `src/lib/montants.ts` (BigInt au centième, arrondi identique à PostgreSQL). Jamais de float.
 - Le compte admin de l'utilisateur est le seul compte permanent : ne jamais le modifier ni le supprimer dans les tests.
 - Comptes jetables : emails en `@exemple.test`, toujours supprimés à la fin (fiches de test aussi).
 
