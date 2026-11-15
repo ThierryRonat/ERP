@@ -88,12 +88,13 @@ try {
 
   // ── COLLABORATEUR ──
   const collab = await compte("collaborateur", fiches[1].id);
-  const page = await html(collab.cookie, "/commercial");
-  verifier(page.texte.includes("Lecture seule"), "Collaborateur : bandeau « Lecture seule » affiché");
-  verifier(!page.texte.includes("Nouveau devis") && !page.texte.includes("Créer le prospect"), "Collaborateur : ni bouton « Nouveau devis » ni formulaire prospect");
+  const page = await html(collab.cookie, "/commercial?onglet=devis");
+  const pageP = await html(collab.cookie, "/commercial?onglet=prospects");
+  verifier(page.texte.includes("Lecture seule") && pageP.texte.includes("Lecture seule"), "Collaborateur : bandeau « Lecture seule » affiché sur les 2 onglets");
+  verifier(!page.texte.includes("Nouveau devis") && !pageP.texte.includes("Créer le prospect"), "Collaborateur : ni bouton « Nouveau devis » ni formulaire prospect");
   verifier(!page.texte.includes("Statut du devis"), "Collaborateur : pas de menu de statut (simple étiquette)");
   const nouveau = await html(collab.cookie, "/commercial/devis/nouveau");
-  verifier(nouveau.statut === 307 && (nouveau.vers ?? "").endsWith("/commercial"), "Collaborateur : /commercial/devis/nouveau tapé à la main → renvoyé");
+  verifier(nouveau.statut === 307 && (nouveau.vers ?? "").includes("/commercial?onglet=devis"), "Collaborateur : /commercial/devis/nouveau tapé à la main → renvoyé");
 
   let avant = [await nbProspects(), await nbDevis(), await compteur()];
   const fP = new FormData(); fP.set("nom", "Intrus"); fP.set("statut", "contacte");
@@ -121,8 +122,10 @@ try {
 
   // ── MANAGER ──
   const manager = await compte("manager", fiches[0].id);
-  const pageM = await html(manager.cookie, "/commercial");
-  verifier(pageM.texte.includes("Nouveau devis") && !pageM.texte.includes("Lecture seule"), "Manager : bouton « Nouveau devis » présent, pas de lecture seule");
+  const pageM = await html(manager.cookie, "/commercial?onglet=devis");
+  const pageMP = await html(manager.cookie, "/commercial?onglet=prospects");
+  verifier(pageM.texte.includes("Nouveau devis") && !pageM.texte.includes("Lecture seule"), "Manager : onglet Devis avec bouton « Nouveau devis », pas de lecture seule");
+  verifier(pageMP.texte.includes("Créer le prospect") && !pageMP.texte.includes("Nouveau devis"), "Manager : onglet Prospects avec le formulaire, sans la liste des devis");
 
   const fP2 = new FormData(); fP2.set("nom", "Prospect manager jetable"); fP2.set("statut", "contacte");
   r = await action(manager.cookie, "/commercial", "creerProspect", {}, fP2);

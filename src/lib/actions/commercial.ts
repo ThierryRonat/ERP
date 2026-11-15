@@ -97,7 +97,7 @@ export async function creerDevis(_etat: EtatFormulaire, donnees: FormData): Prom
   }
 
   revalidatePath("/commercial");
-  redirect(`/commercial?devis_cree=${encodeURIComponent(devis?.numero ?? "")}`);
+  redirect(`/commercial?onglet=devis&devis_cree=${encodeURIComponent(devis?.numero ?? "")}`);
 }
 
 export async function changerStatutDevis(devisId: string, statut: string): Promise<EtatFormulaire> {
