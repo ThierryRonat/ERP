@@ -86,7 +86,7 @@ try {
   const pageCP = await html(collab.cookie, "/rh?onglet=projets");
   verifier(pageCP.texte.includes("Projet jetable RH") && pageCP.texte.includes("réservé manager / admin"), "Collaborateur : lit les projets, mais pas les clients");
   verifier(!pageCP.texte.includes("Créer le projet") && !pageCP.texte.includes("Statut du projet"), "Collaborateur : ni création ni changement de statut de projet");
-  for (const chemin of [`/rh/collaborateurs/${cible.id}`, "/rh/collaborateurs/nouveau"]) {
+  for (const chemin of [`/rh/collaborateurs/${cible.id}/modifier`, "/rh/collaborateurs/nouveau"]) {
     const p = await html(collab.cookie, chemin);
     verifier(p.statut !== 200 && p.vers.includes("refus=admin"), `Collaborateur : ${chemin.replace(cible.id, "<id>")} tapé à la main → renvoyé`);
   }
@@ -126,11 +126,11 @@ try {
   verifier(Boolean(e.error), "Admin : lecture de taux_horaire via l'API → refusée (seul le serveur le lit)");
   const pageA = await html(adminJ.cookie, "/rh?onglet=collaborateurs");
   verifier(!pageA.texte.includes("33,33") && !pageA.texte.includes("120,00"), "Admin : la LISTE RH ne contient aucun taux horaire");
-  const edition = await html(adminJ.cookie, `/rh/collaborateurs/${cible.id}`);
+  const edition = await html(adminJ.cookie, `/rh/collaborateurs/${cible.id}/modifier`);
   verifier(edition.texte.includes("33,33"), "Admin : l'écran d'édition affiche le taux (lu par le serveur)");
   const options = [...edition.texte.matchAll(/<option value="([0-9a-f-]{36})"/g)].map((m) => m[1]);
   verifier(!options.includes(cible.id) && options.includes(bruno), "Admin : la liste des managers exclut la personne elle-même");
-  const editionBruno = await html(adminJ.cookie, `/rh/collaborateurs/${bruno}`);
+  const editionBruno = await html(adminJ.cookie, `/rh/collaborateurs/${bruno}/modifier`);
   const optionsB = [...editionBruno.texte.matchAll(/<option value="([0-9a-f-]{36})"/g)].map((m) => m[1]);
   verifier(!optionsB.includes(cible.id) && !optionsB.includes(lea) && !optionsB.includes(bruno), "Admin : la liste des managers de Bruno exclut ses subordonnés (boucle)");
 

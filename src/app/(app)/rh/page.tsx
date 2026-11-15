@@ -121,7 +121,18 @@ export default async function PageRH({ searchParams }: PageProps<"/rh">) {
                       <td className="whitespace-nowrap px-4 py-3 text-slate-700">
                         {new Date(t.date_saisie).toLocaleDateString("fr-FR", { timeZone: "UTC" })}
                       </td>
-                      <td className="px-4 py-3 text-slate-900">{collab ? nomComplet(collab) : "—"}</td>
+                      <td className="px-4 py-3">
+                        {collab ? (
+                          <Link
+                            href={`/rh/collaborateurs/${t.collaborateur_id}`}
+                            className="text-blue-700 hover:underline"
+                          >
+                            {nomComplet(collab)}
+                          </Link>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-slate-700">{projet?.nom ?? "—"}</td>
                       <td className="px-4 py-3 text-right tabular-nums">
                         {Number(t.heures).toLocaleString("fr-FR", { maximumFractionDigits: 2 })}
@@ -193,7 +204,11 @@ export default async function PageRH({ searchParams }: PageProps<"/rh">) {
                   const manager = f.manager_id ? parId.get(f.manager_id) : null;
                   return (
                     <tr key={f.id} className="border-b border-slate-100 last:border-0">
-                      <td className="px-4 py-3 font-medium text-slate-900">{nomComplet(f)}</td>
+                      <td className="px-4 py-3 font-medium">
+                        <Link href={`/rh/collaborateurs/${f.id}`} className="text-blue-700 hover:underline">
+                          {nomComplet(f)}
+                        </Link>
+                      </td>
                       <td className="px-4 py-3 text-slate-700">{f.poste ?? "—"}</td>
                       <td className="px-4 py-3 text-slate-700">{f.email ?? "—"}</td>
                       <td className="px-4 py-3 text-slate-700">
@@ -211,7 +226,7 @@ export default async function PageRH({ searchParams }: PageProps<"/rh">) {
                       {estAdmin && (
                         <td className="px-4 py-3 text-right">
                           <Link
-                            href={`/rh/collaborateurs/${f.id}`}
+                            href={`/rh/collaborateurs/${f.id}/modifier`}
                             className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
                           >
                             Modifier

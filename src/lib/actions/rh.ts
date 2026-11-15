@@ -64,7 +64,7 @@ export async function enregistrerCollaborateur(_etat: EtatFormulaire, donnees: F
   if (!data?.length) return { erreur: "Fiche introuvable ou modification refusée par la base." };
 
   revalidatePath("/rh");
-  redirect(`/rh?onglet=collaborateurs&fiche_enregistree=${encodeURIComponent([valeurs.prenom, nom].filter(Boolean).join(" "))}`);
+  redirect(`/rh/collaborateurs/${data[0].id}?enregistree=1`);
 }
 
 /** Crée un projet. Réservé à l'admin. */

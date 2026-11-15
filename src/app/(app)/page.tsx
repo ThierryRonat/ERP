@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { obtenirUtilisateurCourant } from "@/lib/session";
 import { LIBELLES_ROLES } from "@/lib/roles";
 
@@ -17,6 +18,14 @@ export default async function PageAccueil({ searchParams }: PageProps<"/">) {
         Bienvenue, {utilisateur.email}. Vous êtes connecté en tant que{" "}
         <strong>{utilisateur.role ? LIBELLES_ROLES[utilisateur.role] : "rôle inconnu"}</strong>.
       </p>
+      {utilisateur.collaborateurId && (
+        <Link
+          href={`/rh/collaborateurs/${utilisateur.collaborateurId}`}
+          className="mt-6 inline-block rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800"
+        >
+          Voir ma fiche et mes temps de la semaine
+        </Link>
+      )}
     </section>
   );
 }

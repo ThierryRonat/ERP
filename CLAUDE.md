@@ -94,6 +94,8 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
   admin jetables ; taux_horaire, garde-fou manager via l'API, actions en direct). Nettoie fiches/projets/comptes.
 - `node --env-file=.env.local scripts/tester-temps.mjs` : saisie des temps en contournant l'interface (listes =
   règle d'insertion, actions et API attaquées, validation, base identique avant/après).
+- `node --env-file=.env.local scripts/tester-fiche-collaborateur.mjs` : fiche en consultation (droits, totaux semaine
+  et par projet, aucun taux), données jetables, base identique avant/après.
 - Calculs monétaires : `src/lib/montants.ts` (BigInt au centième, arrondi identique à PostgreSQL). Jamais de float.
 - `node --env-file=.env.local scripts/tester-pdf.mjs [dossier]` : devis piège → PDF téléchargé et son TEXTE relu
   (décodage WinAnsi des flux pdfkit). Nettoie et remet le compteur. Lire aussi le PDF avec l'outil Read (visuel).
@@ -148,8 +150,12 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
 
 ## Écran RH (`src/app/(app)/rh/`, actions dans `src/lib/actions/rh.ts`)
 - Onglets (?onglet=collaborateurs|projets|temps) via le composant partagé `src/composants/Onglets.tsx`.
-- Fiche collaborateur : `/rh/collaborateurs/nouveau` et `/rh/collaborateurs/[id]` (admin). Le taux est lu UNIQUEMENT
-  dans `[id]/page.tsx` avec `creerClientAdmin()` après `exigerAdmin()` ; écriture par le client de session (RLS).
+- Fiche collaborateur en CONSULTATION : `/rh/collaborateurs/[id]` (session/RLS : sa fiche pour un collaborateur,
+  toutes pour manager/admin ; autre fiche → 404). Infos, semaine (?semaine=AAAA-MM-JJ, en cours par défaut),
+  cumul par projet, historique. AUCUN taux horaire sur cette page.
+- MODIFICATION : `/rh/collaborateurs/nouveau` et `/rh/collaborateurs/[id]/modifier` (admin). Le taux est lu UNIQUEMENT
+  dans `[id]/modifier/page.tsx` avec `creerClientAdmin()` après `exigerAdmin()` ; écriture par la session (RLS).
+- Dates/semaines/heures : `src/lib/dates.ts` (midi UTC, lundi→dimanche, n° ISO ; heures sommées en centièmes).
 - Liste des managers : `managersPossibles()` (src/lib/rh.ts) = même règle que le déclencheur verifier_manager.
 
 ## Organisation du code
