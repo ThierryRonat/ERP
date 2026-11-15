@@ -66,6 +66,18 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
 - PIÈGE VÉCU : le vrai `prochain_numero` cite `compteurs` SANS préfixe `public.`. Toute fonction qui l'appelle doit
   avoir `set search_path = public, pg_temp` (avec `search_path = ''` → « relation compteurs does not exist »).
 - Ordre des lignes de devis : `devis_lignes.created_at` (posé avec clock_timestamp() par creer_devis).
+- Devis passé à « accepte » (INSERT ou UPDATE, même depuis l'éditeur Supabase) → déclencheur
+  `devis_accepte_creer_projet` (security definer) : client créé si le prospect n'en a pas, prospect « gagne »,
+  projet « <société ou nom> — <numéro> » en_cours rattaché au client ET au devis. Rejouable (verrou + pas de
+  doublon), ne supprime jamais rien (repasser en refusé ne touche à rien).
+- Manager : déclencheur `verifier_manager` → jamais soi-même, jamais de boucle.
+- `collaborateurs.taux_horaire` : AUCUN droit SELECT pour anon/authenticated (droit retiré sur la table puis redonné
+  colonne par colonne). Lecture uniquement côté serveur avec la clé secrète. Écriture permise (RLS admin).
+  → Ne JAMAIS faire `select("*")` ni `.select()` sans colonnes sur collaborateurs avec le client de session.
+- Temps : chacun saisit LES SIENS (même manager/admin), uniquement sur un projet en_cours, statut brouillon/soumis,
+  0 < heures ≤ 24. L'auteur modifie/supprime tant que non validé ; seuls manager/admin passent en « valide ».
+  `temps.facture_id` et `temps.collaborateur_id` ne sont pas modifiables par l'API.
+- Projets : lus par tout compte rattaché ; créés/modifiés par l'admin seul. Clients : manager et admin seulement.
 
 ## Scripts de vérification (préfixer PATH avec Node)
 - `node --env-file=.env.local scripts/verifier-supabase.mjs [--inscription-fermee]` : clés, comptes, profils, état de l'inscription.
@@ -110,7 +122,9 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
 ## Avancement des règles RLS
 - `profiles`, `collaborateurs` : règles définitives (migration `securite_comptes`, 8 règles) + déclencheur
   `empecher_auto_retrogradation`. Test réel : `node --env-file=.env.local scripts/tester-rls.mjs`.
-- Les 11 autres tables : encore sous la règle provisoire « tout connecté lit/écrit tout ».
+- `prospects`, `devis`, `devis_lignes`, `compteurs` : migration `commercial`.
+- `projets`, `clients`, `temps` (+ colonnes de `collaborateurs`) : migration `rh`.
+- Encore sous la règle provisoire « tout connecté lit/écrit tout » : factures, relances, conges, notes_de_frais.
 
 ## Pièges
 - `SUPABASE_SERVICE_ROLE_KEY` est SECRÈTE : jamais de préfixe `NEXT_PUBLIC_`, jamais commitée, utilisée seulement côté serveur (`import "server-only"`).
