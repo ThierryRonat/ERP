@@ -2,9 +2,11 @@ import { obtenirUtilisateurCourant } from "@/lib/session";
 import { creerClientServeur } from "@/lib/supabase/serveur";
 import { genererPdfDevis, type DonneesDevisPdf } from "@/lib/pdf/devis-pdf";
 
-// GET /commercial/devis/<id>/pdf → téléchargement du PDF du devis.
+// GET /commercial/devis/<id>/pdf               → téléchargement du PDF du devis.
+// GET /commercial/devis/<id>/pdf?mode=apercu   → affichage dans le navigateur (même PDF, même contrôle).
 // Lecture avec la SESSION : la RLS décide si la personne a le droit de voir ce devis.
-export async function GET(_requete: Request, contexte: RouteContext<"/commercial/devis/[id]/pdf">) {
+export async function GET(requete: Request, contexte: RouteContext<"/commercial/devis/[id]/pdf">) {
+  const apercu = new URL(requete.url).searchParams.get("mode") === "apercu";
   await obtenirUtilisateurCourant(); // redirige vers /connexion si personne n'est connecté
   const { id } = await contexte.params;
 
@@ -29,7 +31,8 @@ export async function GET(_requete: Request, contexte: RouteContext<"/commercial
   return new Response(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${devis.numero}.pdf"`,
+      // inline = le navigateur l'affiche ; attachment = il le télécharge
+      "Content-Disposition": `${apercu ? "inline" : "attachment"}; filename="${devis.numero}.pdf"`,
       "Cache-Control": "private, no-store",
     },
   });

@@ -136,14 +136,25 @@ export default async function PageCommercial({ searchParams }: PageProps<"/comme
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <a
-                          href={`/commercial/devis/${d.id}/pdf`}
-                          download
-                          aria-label={`Télécharger le PDF du devis ${d.numero}`}
-                          className="whitespace-nowrap rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                        >
-                          ⬇ PDF
-                        </a>
+                        <div className="flex gap-2">
+                          <a
+                            href={`/commercial/devis/${d.id}/pdf?mode=apercu`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`Visualiser le PDF du devis ${d.numero}`}
+                            className="whitespace-nowrap rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                          >
+                            👁 Visualiser
+                          </a>
+                          <a
+                            href={`/commercial/devis/${d.id}/pdf`}
+                            download
+                            aria-label={`Télécharger le PDF du devis ${d.numero}`}
+                            className="whitespace-nowrap rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                          >
+                            ⬇ Télécharger
+                          </a>
+                        </div>
                       </td>
                     </tr>
                   );

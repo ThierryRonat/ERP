@@ -56,7 +56,7 @@ async function compte(role, collaborateurId) {
   await api.auth.signInWithPassword({ email, password });
   return { cookie: [...jarre].map(([n, v]) => `${n}=${v}`).join("; "), api };
 }
-const telecharger = (cookie, id) => fetch(`${URL_APP}/commercial/devis/${id}/pdf`, { headers: cookie ? { cookie } : {}, redirect: "manual" });
+const telecharger = (cookie, id, suffixe = "") => fetch(`${URL_APP}/commercial/devis/${id}/pdf${suffixe}`, { headers: cookie ? { cookie } : {}, redirect: "manual" });
 
 const cleCompteur = `devis_${new Date().getFullYear()}`;
 const compteurDepart = (await admin.from("compteurs").select("valeur").eq("cle", cleCompteur).maybeSingle()).data?.valeur ?? null;
@@ -120,6 +120,18 @@ try {
   const anonyme = await telecharger(null, id);
   verifier(anonyme.status === 307 && (anonyme.headers.get("location") ?? "").includes("/connexion"), "Visiteur non connecté : redirigé vers la connexion");
   verifier((await telecharger(manager.cookie, "00000000-0000-0000-0000-000000000000")).status === 404, "Devis inexistant : 404");
+
+  // ── Visualisation (aperçu dans le navigateur) ──
+  const apercu = await telecharger(manager.cookie, id, "?mode=apercu");
+  const octetsApercu = Buffer.from(await apercu.arrayBuffer());
+  verifier(apercu.status === 200 && apercu.headers.get("content-type") === "application/pdf", "Visualiser : PDF renvoyé (HTTP 200, application/pdf)");
+  verifier((apercu.headers.get("content-disposition") ?? "").startsWith("inline"), `Visualiser : « inline » → le navigateur l'AFFICHE (${apercu.headers.get("content-disposition")})`);
+  verifier((r.headers.get("content-disposition") ?? "").startsWith("attachment"), "Télécharger : « attachment » → le navigateur le TÉLÉCHARGE");
+  verifier(lireTextePdf(octetsApercu).some((t) => t.includes("1 483 381,03 €")), "Visualiser : même contenu que le téléchargement (totaux relus)");
+  verifier((await telecharger(collab.cookie, id, "?mode=apercu")).status === 200, "Visualiser : collaborateur rattaché → autorisé (lecture seule)");
+  verifier((await telecharger(orphelin.cookie, id, "?mode=apercu")).status === 404, "Visualiser : compte non rattaché → 404");
+  const anonymeApercu = await telecharger(null, id, "?mode=apercu");
+  verifier(anonymeApercu.status === 307 && (anonymeApercu.headers.get("location") ?? "").includes("/connexion"), "Visualiser : visiteur non connecté → redirigé vers la connexion");
 } finally {
   if (devisId) {
     await admin.from("devis_lignes").delete().eq("devis_id", devisId);
