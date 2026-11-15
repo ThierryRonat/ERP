@@ -17,6 +17,7 @@ const verifier = (condition, message) => {
 };
 
 const crees = [];
+const comptesAvant = (await admin.auth.admin.listUsers({ perPage: 1000 })).data.users.length;
 
 async function compteJetable(role, collaborateurId) {
   const email = `jetable-${role}-${Date.now()}@exemple.test`;
@@ -99,8 +100,8 @@ try {
     const { error } = await admin.auth.admin.deleteUser(id);
     if (error) verifier(false, `Suppression du compte jetable ${id} : ${error.message}`);
   }
-  const { data } = await admin.auth.admin.listUsers();
-  verifier(data.users.length === 1, `Comptes jetables supprimés (reste ${data.users.length} compte : le vôtre)`);
+  const { data } = await admin.auth.admin.listUsers({ perPage: 1000 });
+  verifier(data.users.length === comptesAvant, `Comptes jetables supprimés (${data.users.length} comptes, comme avant le test)`);
 }
 
 process.exit(echecs ? 1 : 0);
