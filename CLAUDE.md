@@ -189,6 +189,15 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
   taux du jour → alerte « Écart détecté » si différence.
 - FAC-2026-0001 (Axians, nov. 2026, 1 539,00 € TTC) est une VRAIE facture créée en test avec l'accord de l'utilisateur.
 
+## Email (Resend) — `src/lib/email.ts`, action `envoyerFacture` (src/lib/actions/finance.ts)
+- Variables (.env.local ET Vercel) : RESEND_API_KEY (secrète), EMAIL_EXPEDITEUR, EMAIL_DESTINATAIRE_TEST.
+- Ordre : PDF → envoi → SEULEMENT si succès : statut « envoyee » + date_envoi. Échec → statut intact (prouvé avec une
+  fausse clé). MODE TEST (EMAIL_DESTINATAIRE_TEST rempli) : tout part vers cette adresse, statut NON modifié.
+- Domaine mission-webdev.fr NON vérifié chez Resend (16/11/2026) : expéditeur onboarding@resend.dev, envoi possible
+  uniquement vers t.ronat@mission-webdev.fr. Ne JAMAIS envoyer à une adresse tierce sans accord explicite.
+- `node --env-file=.env.local scripts/tester-email.mjs` : UN email réel vers l'adresse de test, vérifié chez Resend
+  (destinataire, pièce jointe, livraison) ; refuse de tourner si le mode test est vide.
+
 ## Organisation du code
 - `src/lib/supabase/serveur.ts` : client au nom de l'utilisateur (RLS appliquée).
 - `src/lib/supabase/admin.ts` : client clé secrète (`server-only`), uniquement après contrôle des droits.
