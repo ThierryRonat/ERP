@@ -87,6 +87,17 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
   ni détachable ; seul un temps validé peut être rattaché.
   → Un test ne peut JAMAIS supprimer une facture : toute facture réelle créée en test reste définitivement.
 - Factures et relances : admin seul (lecture et écriture) ; API : seuls `statut` et `date_envoi` modifiables.
+- Absences (migration `absences`) : `valider_conge(id)` / `refuser_conge(id)` (manager/admin ; pas sa propre demande
+  sauf l'admin). D'ABORD `update … where statut = 'demandee'`, et le solde est décrémenté par le déclencheur
+  `decompter_solde_conge` UNIQUEMENT sur une ligne qui devient « validee » (aussi depuis l'éditeur) ; CP et RTT
+  décomptent, sans solde non ; solde négatif → refus. Congé validé figé (déclencheur), ne peut plus être refusé.
+  Pas de table d'historique : l'historique = les congés validés.
+- Notes de frais : `changer_statut_note(id, 'validee'|'remboursee')`, soumise → validée → remboursée ; figée hors
+  « soumise ». `justificatif_url` contient le CHEMIN « <id collaborateur>/<fichier> », JAMAIS une adresse signée
+  (fabriquée à chaque affichage). Statuts non modifiables par l'API.
+- Stockage `justificatifs` (privé) : dépôt et lecture dans SON dossier (1er segment du chemin = mon_collaborateur_id),
+  manager/admin lisent tout ; aucune modification/suppression par l'API (le serveur nettoie avec la clé secrète).
+- PGRST201 : `conges` pointe deux fois vers `collaborateurs` → préciser `collaborateurs!collaborateur_id(...)`.
 
 ## Scripts de vérification (préfixer PATH avec Node)
 - `node --env-file=.env.local scripts/verifier-supabase.mjs [--inscription-fermee]` : clés, comptes, profils, état de l'inscription.
