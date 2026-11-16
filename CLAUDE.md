@@ -125,6 +125,11 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
   dates, mentions, aucun « / »), 401/403/404/409. Ne crée aucune facture.
 - `node --env-file=.env.local scripts/tester-conges.mjs` : congés en contournant l'interface (validation appelée 2 fois
   de suite PUIS 2 fois en même temps → décompte unique, refus après validation, clé secrète, PGRST201, solde affiché).
+- `node --env-file=.env.local scripts/tester-notes.mjs` : notes de frais + justificatifs (chemin en base, adresse qui
+  change à chaque affichage, fichier d'autrui refusé, fichier déguisé refusé et retiré, figée après validation).
+- `node --env-file=.env.local scripts/verifier-justificatif-en-ligne.mjs <url>` : justificatif visible en ligne.
+- Les identifiants d'actions serveur d'un build de PRODUCTION diffèrent de ceux du dev : les tests « actions en direct »
+  ne visent que le serveur de développement ; en ligne, passer par l'API et les pages.
 - Calculs monétaires : `src/lib/montants.ts` (BigInt au centième, arrondi identique à PostgreSQL). Jamais de float.
 - `node --env-file=.env.local scripts/tester-pdf.mjs [dossier]` : devis piège → PDF téléchargé et son TEXTE relu
   (décodage WinAnsi des flux pdfkit). Nettoie et remet le compteur. Lire aussi le PDF avec l'outil Read (visuel).
@@ -218,6 +223,12 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
   changement : Deployments → … → Redeploy (sinon l'ancienne version garde les anciennes variables).
 - `node --env-file=.env.local scripts/verifier-vercel.mjs <url>` : vérifie le site en ligne sans rien envoyer.
 - Les scripts tester-compte-jetable et tester-facture-pdf acceptent URL_APP=<url> pour tester le site en ligne.
+
+## Écran Absences (`src/app/(app)/absences/`, actions `src/lib/actions/absences.ts`)
+- Onglets Congés / Notes de frais. Solde affiché ; fiche collaborateur : solde + historique (congés validés).
+- Dépôt du justificatif DEPUIS LE NAVIGATEUR (`src/lib/supabase/navigateur.ts`) dans `justificatifs/<mon id>/<uuid>.<ext>`,
+  puis action `creerNoteDeFrais` : vérifie dossier, existence, type et taille (sinon retire le fichier) et enregistre le
+  CHEMIN. Affichage : `createSignedUrls(chemins, 600)` avec la session, à CHAQUE rendu.
 
 ## Organisation du code
 - `src/lib/supabase/serveur.ts` : client au nom de l'utilisateur (RLS appliquée).

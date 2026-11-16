@@ -14,6 +14,7 @@ import { aujourdhuiParis, enCentiemes, formaterDate, formaterHeures } from "@/li
 import { Onglets } from "@/composants/Onglets";
 import { FormulaireConge } from "./FormulaireConge";
 import { ActionsConge } from "./ActionsConge";
+import { OngletNotes } from "./OngletNotes";
 
 type Onglet = "conges" | "notes";
 type Personne = { prenom: string | null; nom: string } | null;
@@ -34,7 +35,7 @@ export default async function PageAbsences({ searchParams }: PageProps<"/absence
   // Lecture avec la SESSION : la RLS décide (les miens ; tout pour manager et admin).
   // ⚠️ conges pointe DEUX FOIS vers collaborateurs : on précise la colonne (sinon erreur PGRST201).
   const supabase = await creerClientServeur();
-  const [{ data: conges, error }, { data: maFiche }] = await Promise.all([
+  const [{ data: conges, error }, { data: maFiche }, { count: nombreNotes }] = await Promise.all([
     supabase
       .from("conges")
       .select(
@@ -44,6 +45,7 @@ export default async function PageAbsences({ searchParams }: PageProps<"/absence
     utilisateur.collaborateurId
       ? supabase.from("collaborateurs").select("solde_conges").eq("id", utilisateur.collaborateurId).maybeSingle()
       : Promise.resolve({ data: null }),
+    supabase.from("notes_de_frais").select("id", { count: "exact", head: true }),
   ]);
 
   const tous = conges ?? [];
@@ -72,7 +74,7 @@ export default async function PageAbsences({ searchParams }: PageProps<"/absence
         actif={onglet}
         onglets={[
           { cle: "conges", libelle: "Congés", nombre: tous.length },
-          { cle: "notes", libelle: "Notes de frais" },
+          { cle: "notes", libelle: "Notes de frais", nombre: nombreNotes ?? 0 },
         ]}
       />
 
@@ -132,13 +134,7 @@ export default async function PageAbsences({ searchParams }: PageProps<"/absence
         </div>
       )}
 
-      {onglet === "notes" && (
-        <div role="tabpanel" aria-label="Notes de frais">
-          <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-            Les notes de frais arrivent à l&apos;étape suivante.
-          </p>
-        </div>
-      )}
+      {onglet === "notes" && <OngletNotes utilisateur={utilisateur} />}
     </section>
   );
 }

@@ -28,6 +28,8 @@ export const LIBELLES_STATUT_NOTE: Record<StatutNote, string> = {
   remboursee: "Remboursée",
 };
 
+export const BUCKET_JUSTIFICATIFS = "justificatifs";
+
 /** Justificatifs acceptés (photo ou PDF), 10 Mo maximum. */
 export const TYPES_JUSTIFICATIF = [
   "image/jpeg",
