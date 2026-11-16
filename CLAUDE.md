@@ -126,6 +126,9 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
 - Mentions légales : `src/lib/entreprise.ts` (raison sociale, forme juridique, adresse, SIRET, RCS, TVA intracom,
   pénalités, indemnité). Vide → « À RENSEIGNER » en rouge sur les PDF + alerte sur l'écran Finance.
   L'utilisateur envoie ses valeurs à Claude, qui remplit le fichier.
+  `incoherencesMentions()` vérifie SIRET (Luhn) = SIREN du RCS = SIREN de la TVA (+ clé TVA) → alerte à l'écran.
+  Remplies le 16/11/2026 : MISSION-WEBDEV, SIREN 932 580 392 (raison sociale corrigée depuis « MIISION »,
+  pénalités = formule légale standard proposée par Claude : à faire confirmer).
 - Facture PDF : `src/lib/pdf/facture-pdf.ts`, route `GET /finance/factures/[id]/pdf[?mode=apercu]` :
   401 non connecté, 403 non admin, 404 introuvable, 409 si écart de taux (PDF bloqué), jamais 500 pour un refus.
 - `src/proxy.ts` : sur une adresse se terminant par `/pdf`, un visiteur non connecté reçoit 401 (pas de redirection).

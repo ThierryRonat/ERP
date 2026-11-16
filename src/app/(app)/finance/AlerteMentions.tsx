@@ -1,20 +1,31 @@
-import { mentionsManquantes } from "@/lib/entreprise";
+import { incoherencesMentions, mentionsManquantes } from "@/lib/entreprise";
 
-/** Prévient tant que les mentions légales de src/lib/entreprise.ts ne sont pas toutes remplies. */
+/** Prévient tant que les mentions légales de src/lib/entreprise.ts sont incomplètes ou incohérentes. */
 export function AlerteMentions() {
   const manquantes = mentionsManquantes();
-  if (manquantes.length === 0) return null;
+  const incoherences = incoherencesMentions();
+  if (manquantes.length === 0 && incoherences.length === 0) return null;
   return (
     <div
       role="alert"
       data-testid="alerte-mentions"
       className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
     >
-      <strong>⚠️ Mentions légales incomplètes</strong> — vos factures afficheront « À RENSEIGNER » à la place de :{" "}
-      <strong>{manquantes.join(", ")}</strong>.
-      <br />
-      Elles se remplissent dans le fichier <code className="rounded bg-amber-100 px-1">src/lib/entreprise.ts</code> :
-      envoyez-les à Claude, il les y reportera.
+      {manquantes.length > 0 && (
+        <p>
+          <strong>⚠️ Mentions légales incomplètes</strong> — vos factures afficheront « À RENSEIGNER » à la place de :{" "}
+          <strong>{manquantes.join(", ")}</strong>.
+        </p>
+      )}
+      {incoherences.length > 0 && (
+        <p data-testid="alerte-incoherences">
+          <strong>⚠️ Mentions légales incohérentes</strong> — {incoherences.join(" ; ")}.
+        </p>
+      )}
+      <p className="mt-1">
+        Elles se règlent dans le fichier <code className="rounded bg-amber-100 px-1">src/lib/entreprise.ts</code> :
+        envoyez les corrections à Claude, il les y reportera.
+      </p>
     </div>
   );
 }
