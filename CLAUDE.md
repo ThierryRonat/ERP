@@ -110,6 +110,8 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
 - Scripts d'actions : la liste des actions du serveur est relue À CHAQUE APPEL (idActionDe) et la page est chargée si
   l'action est inconnue (après un redémarrage, le manifeste se complète au fil des compilations).
 - Un test ne cible JAMAIS « le dernier enregistrement de la base » : uniquement les données jetables qu'il a créées.
+- `node --env-file=.env.local scripts/tester-facture-pdf.mjs [dossier]` : PDF de la dernière facture relu (montants,
+  dates, mentions, aucun « / »), 401/403/404/409. Ne crée aucune facture.
 - Calculs monétaires : `src/lib/montants.ts` (BigInt au centième, arrondi identique à PostgreSQL). Jamais de float.
 - `node --env-file=.env.local scripts/tester-pdf.mjs [dossier]` : devis piège → PDF téléchargé et son TEXTE relu
   (décodage WinAnsi des flux pdfkit). Nettoie et remet le compteur. Lire aussi le PDF avec l'outil Read (visuel).
@@ -120,7 +122,13 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
 - `pourPdf()` : remplace U+202F / U+00A0 (toLocaleString fr-FR) par une espace normale, et tout caractère
   hors WinAnsi par « ? ». TOUT texte imprimé passe par `pourPdf()`.
 - Route : `GET /commercial/devis/[id]/pdf` (lecture par la session → RLS). Vérifié en build de production.
-- Émetteur imprimé : `src/lib/entreprise.ts` (à personnaliser par l'utilisateur).
+- Outils PDF communs (pdfkit standalone, pourPdf, en-tête émetteur, tableau, totaux) : `src/lib/pdf/commun.ts`.
+- Mentions légales : `src/lib/entreprise.ts` (raison sociale, forme juridique, adresse, SIRET, RCS, TVA intracom,
+  pénalités, indemnité). Vide → « À RENSEIGNER » en rouge sur les PDF + alerte sur l'écran Finance.
+  L'utilisateur envoie ses valeurs à Claude, qui remplit le fichier.
+- Facture PDF : `src/lib/pdf/facture-pdf.ts`, route `GET /finance/factures/[id]/pdf[?mode=apercu]` :
+  401 non connecté, 403 non admin, 404 introuvable, 409 si écart de taux (PDF bloqué), jamais 500 pour un refus.
+- `src/proxy.ts` : sur une adresse se terminant par `/pdf`, un visiteur non connecté reçoit 401 (pas de redirection).
 - Le compte admin de l'utilisateur est le seul compte permanent : ne jamais le modifier ni le supprimer dans les tests.
 - Comptes jetables : emails en `@exemple.test`, toujours supprimés à la fin (fiches de test aussi).
 - INCIDENT VÉCU (15/11/2026) : un test acceptait un devis sur un prospect RÉEL → la règle « devis accepté » a créé

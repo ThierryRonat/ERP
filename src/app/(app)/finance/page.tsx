@@ -8,6 +8,7 @@ import { aujourdhuiParis, formaterDate } from "@/lib/dates";
 import { BoutonGenerer } from "./BoutonGenerer";
 import { SelecteurStatutFacture } from "./SelecteurStatutFacture";
 import { TableauLignes } from "./TableauLignes";
+import { AlerteMentions, BoutonsPdf } from "./AlerteMentions";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const champ = "w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm";
@@ -37,6 +38,8 @@ export default async function PageFinance({ searchParams }: PageProps<"/finance"
         <h1 className="mb-1 text-2xl font-semibold">Finance</h1>
         <p className="text-slate-600">Facturation des temps validés.</p>
       </div>
+
+      <AlerteMentions />
 
       {/* ── Nouvelle facture ── */}
       <div>
@@ -126,6 +129,7 @@ export default async function PageFinance({ searchParams }: PageProps<"/finance"
                 <th className="px-4 py-3 text-right font-medium">Total HT</th>
                 <th className="px-4 py-3 text-right font-medium">Total TTC</th>
                 <th className="px-4 py-3 font-medium">Statut</th>
+                <th className="px-4 py-3 font-medium">PDF</th>
               </tr>
             </thead>
             <tbody>
@@ -149,11 +153,14 @@ export default async function PageFinance({ searchParams }: PageProps<"/finance"
                   <td className="px-4 py-3">
                     <SelecteurStatutFacture id={f.id} numero={f.numero} statut={f.statut as StatutFacture} />
                   </td>
+                  <td className="px-4 py-3">
+                    <BoutonsPdf id={f.id} numero={f.numero} />
+                  </td>
                 </tr>
               ))}
               {factures?.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-slate-500">
+                  <td colSpan={9} className="px-4 py-6 text-center text-slate-500">
                     Aucune facture pour l&apos;instant.
                   </td>
                 </tr>

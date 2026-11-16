@@ -40,6 +40,14 @@ export async function proxy(requete: NextRequest) {
   const chemin = requete.nextUrl.pathname;
   const estPublique = PAGES_PUBLIQUES.some((p) => chemin === p || chemin.startsWith(p + "/"));
 
+  // Une adresse qui sert un FICHIER répond 401 (pas une redirection vers une page HTML).
+  if (!estConnecte && chemin.endsWith("/pdf")) {
+    return new NextResponse("Connexion requise pour télécharger ce document.", {
+      status: 401,
+      headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
+    });
+  }
+
   if (!estConnecte && !estPublique) {
     const url = requete.nextUrl.clone();
     url.pathname = "/connexion";

@@ -9,6 +9,7 @@ import { formaterEuros } from "@/lib/montants";
 import { enCentiemes, formaterDate, formaterHeures } from "@/lib/dates";
 import { SelecteurStatutFacture } from "../../SelecteurStatutFacture";
 import { TableauLignes } from "../../TableauLignes";
+import { AlerteMentions, BoutonsPdf } from "../../AlerteMentions";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -58,7 +59,10 @@ export default async function PageFacture({ params, searchParams }: PageProps<"/
               {client?.nom} — période du {formaterDate(facture.periode_debut)} au {formaterDate(facture.periode_fin)}
             </p>
           </div>
-          <SelecteurStatutFacture id={facture.id} numero={facture.numero} statut={facture.statut as StatutFacture} />
+          <div className="flex items-center gap-3">
+            {!ecart && <BoutonsPdf id={facture.id} numero={facture.numero} />}
+            <SelecteurStatutFacture id={facture.id} numero={facture.numero} statut={facture.statut as StatutFacture} />
+          </div>
         </div>
         {generee === "1" && (
           <p
@@ -69,6 +73,8 @@ export default async function PageFacture({ params, searchParams }: PageProps<"/
           </p>
         )}
       </div>
+
+      <AlerteMentions />
 
       <dl className="grid gap-x-8 gap-y-3 rounded-lg border border-slate-200 bg-white p-5 text-sm sm:grid-cols-3">
         <Info libelle="Client" valeur={client?.nom} />

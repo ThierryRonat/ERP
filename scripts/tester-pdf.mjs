@@ -118,7 +118,7 @@ try {
   const orphelin = await compte("collaborateur", null);
   verifier((await telecharger(orphelin.cookie, id)).status === 404, "Compte non rattaché : 404 (la RLS masque le devis)");
   const anonyme = await telecharger(null, id);
-  verifier(anonyme.status === 307 && (anonyme.headers.get("location") ?? "").includes("/connexion"), "Visiteur non connecté : redirigé vers la connexion");
+  verifier(anonyme.status === 401 && (await anonyme.text()).includes("Connexion requise"), "Visiteur non connecté : 401 « Connexion requise… » (pas de redirection sur un fichier)");
   verifier((await telecharger(manager.cookie, "00000000-0000-0000-0000-000000000000")).status === 404, "Devis inexistant : 404");
 
   // ── Visualisation (aperçu dans le navigateur) ──
@@ -131,7 +131,7 @@ try {
   verifier((await telecharger(collab.cookie, id, "?mode=apercu")).status === 200, "Visualiser : collaborateur rattaché → autorisé (lecture seule)");
   verifier((await telecharger(orphelin.cookie, id, "?mode=apercu")).status === 404, "Visualiser : compte non rattaché → 404");
   const anonymeApercu = await telecharger(null, id, "?mode=apercu");
-  verifier(anonymeApercu.status === 307 && (anonymeApercu.headers.get("location") ?? "").includes("/connexion"), "Visualiser : visiteur non connecté → redirigé vers la connexion");
+  verifier(anonymeApercu.status === 401, "Visualiser : visiteur non connecté → 401");
 } finally {
   if (devisId) {
     await admin.from("devis_lignes").delete().eq("devis_id", devisId);

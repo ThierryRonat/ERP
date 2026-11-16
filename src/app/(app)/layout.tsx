@@ -20,7 +20,7 @@ export default async function MiseEnPageApplication({ children }: LayoutProps<"/
         email={utilisateur.email}
         libelleRole={utilisateur.role ? LIBELLES_ROLES[utilisateur.role] : "aucun"}
       />
-      <div className="flex-1">
+      <div className="min-w-0 flex-1">
         {utilisateur.role === null && (
           <BandeauAlerte titre="Profil introuvable">
             Votre compte n&apos;a pas de ligne dans la table profiles : aucun rôle ne peut vous être appliqué.
