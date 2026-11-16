@@ -78,6 +78,15 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
   0 < heures ≤ 24. L'auteur modifie/supprime tant que non validé ; seuls manager/admin passent en « valide ».
   `temps.facture_id` et `temps.collaborateur_id` ne sont pas modifiables par l'API.
 - Projets : lus par tout compte rattaché ; créés/modifiés par l'admin seul. Clients : manager et admin seulement.
+- Finance (migration `finance`) : PAS de table de lignes de facture (voulu) ; une facture = ses temps (temps.facture_id).
+  Une facture naît UNIQUEMENT par `generer_facture(p_client_id, p_mois)` (admin, security definer) : contrôles « rien à
+  facturer » et « taux à 0 » AVANT prochain_numero('facture','FAC') ; rattachement des temps libres PUIS totaux
+  (ligne = projet × taux, round(heures × taux, 2)), TVA 20 % (montant), échéance +30 j, statut brouillon.
+- Déclencheurs (valables AUSSI avec la clé secrète) : numéro immuable, aucune suppression ni TRUNCATE de factures,
+  montants/client/période figés hors brouillon, pas de retour en brouillon ; temps facturé ni modifiable, ni supprimable,
+  ni détachable ; seul un temps validé peut être rattaché.
+  → Un test ne peut JAMAIS supprimer une facture : toute facture réelle créée en test reste définitivement.
+- Factures et relances : admin seul (lecture et écriture) ; API : seuls `statut` et `date_envoi` modifiables.
 
 ## Scripts de vérification (préfixer PATH avec Node)
 - `node --env-file=.env.local scripts/verifier-supabase.mjs [--inscription-fermee]` : clés, comptes, profils, état de l'inscription.
