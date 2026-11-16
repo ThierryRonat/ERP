@@ -9,6 +9,13 @@ const PAGES_PUBLIQUES = ["/connexion"];
  * tout visiteur non connecté vers /connexion.
  */
 export async function proxy(requete: NextRequest) {
+  // ⚠️ TOUT EN HAUT, avant même la session : l'adresse appelée par le planificateur (qui n'a pas de session)
+  // ne doit JAMAIS être redirigée vers /connexion — beaucoup d'outils liraient la redirection comme un succès.
+  // Elle se protège elle-même par son jeton secret.
+  if (requete.nextUrl.pathname === "/api/relances" || requete.nextUrl.pathname.startsWith("/api/relances/")) {
+    return NextResponse.next();
+  }
+
   let reponse = NextResponse.next({ request: requete });
 
   const supabase = createServerClient(
