@@ -8,7 +8,7 @@ import { randomBytes } from "node:crypto";
 import { inflateSync } from "node:zlib";
 import { writeFileSync } from "node:fs";
 
-const URL_APP = "http://localhost:3000";
+const URL_APP = process.env.URL_APP ?? "http://localhost:3000"; // URL_APP=https://… pour tester le site en ligne
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const options = { auth: { persistSession: false, autoRefreshToken: false } };
 const admin = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY, options);

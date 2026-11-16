@@ -198,6 +198,14 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
 - `node --env-file=.env.local scripts/tester-email.mjs` : UN email réel vers l'adresse de test, vérifié chez Resend
   (destinataire, pièce jointe, livraison) ; refuse de tourner si le mode test est vide.
 
+## Vercel (mise en ligne)
+- Production : https://erp-ashen-six.vercel.app (publique). Les adresses de déploiement (`erp-xxxx-mission-webdev…`)
+  restent protégées par Vercel Authentication (« Standard Protection »).
+- Variables Vercel : les 3 Supabase + RESEND_API_KEY, EMAIL_EXPEDITEUR, EMAIL_DESTINATAIRE_TEST. Après tout ajout ou
+  changement : Deployments → … → Redeploy (sinon l'ancienne version garde les anciennes variables).
+- `node --env-file=.env.local scripts/verifier-vercel.mjs <url>` : vérifie le site en ligne sans rien envoyer.
+- Les scripts tester-compte-jetable et tester-facture-pdf acceptent URL_APP=<url> pour tester le site en ligne.
+
 ## Organisation du code
 - `src/lib/supabase/serveur.ts` : client au nom de l'utilisateur (RLS appliquée).
 - `src/lib/supabase/admin.ts` : client clé secrète (`server-only`), uniquement après contrôle des droits.
