@@ -10,6 +10,8 @@ import { enCentiemes, formaterDate, formaterHeures } from "@/lib/dates";
 import { SelecteurStatutFacture } from "../../SelecteurStatutFacture";
 import { TableauLignes } from "../../TableauLignes";
 import { AlerteMentions, BoutonsPdf } from "../../AlerteMentions";
+import { BoutonEnvoyer } from "../../BoutonEnvoyer";
+import { configurationEmail } from "@/lib/email";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -39,6 +41,7 @@ export default async function PageFacture({ params, searchParams }: PageProps<"/
   // Lignes reconstituées depuis les temps rattachés, avec le taux D'AUJOURD'HUI (lu par le serveur, clé secrète)
   const calcul = await lignesDeFacture(facture.id);
   const { ecart, figeHt, figeTva, figeTtc } = ecartAvecFigé(calcul, facture);
+  const configEmail = configurationEmail();
 
   const { data: temps } = await creerClientAdmin()
     .from("temps")
@@ -75,6 +78,18 @@ export default async function PageFacture({ params, searchParams }: PageProps<"/
       </div>
 
       <AlerteMentions />
+
+      <BoutonEnvoyer
+        factureId={facture.id}
+        numero={facture.numero}
+        emailClient={client?.email_contact ?? null}
+        destinataireTest={configEmail.destinataireTest}
+        bloque={
+          configEmail.probleme ??
+          (ecart ? "un taux horaire a changé depuis l'émission (voir l'alerte ci-dessous)." : null) ??
+          (client?.email_contact ? null : "le client n'a pas d'email de contact.")
+        }
+      />
 
       <dl className="grid gap-x-8 gap-y-3 rounded-lg border border-slate-200 bg-white p-5 text-sm sm:grid-cols-3">
         <Info libelle="Client" valeur={client?.nom} />

@@ -1,8 +1,5 @@
 import { creerClientServeur } from "@/lib/supabase/serveur";
-import { ecartAvecFigé, lignesDeFacture } from "@/lib/finance-serveur";
-import { genererPdfFacture, type DonneesFacturePdf } from "@/lib/pdf/facture-pdf";
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { pdfDeFacture } from "@/lib/facture-pdf-serveur";
 
 /** Réponse texte en français (jamais de page d'erreur 500 pour un simple refus). */
 function refus(statut: number, message: string) {
@@ -27,45 +24,15 @@ export async function GET(requete: Request, contexte: RouteContext<"/finance/fac
   if (profil?.role !== "admin") return refus(403, "Accès refusé : les factures sont réservées à l'administrateur.");
 
   const { id } = await contexte.params;
-  if (!UUID.test(id)) return refus(404, "Facture introuvable.");
+  const resultat = await pdfDeFacture(supabase, id); // 404 / 409 / 500 en français
+  if (!resultat.ok) return refus(resultat.statut, resultat.message);
 
-  const { data: facture } = await supabase
-    .from("factures")
-    .select(
-      "id, numero, date_emission, date_echeance, periode_debut, periode_fin, total_ht, tva, total_ttc, clients(nom, adresse, email_contact, telephone)",
-    )
-    .eq("id", id)
-    .maybeSingle();
-  if (!facture) return refus(404, "Facture introuvable.");
-
-  try {
-    // Lignes reconstituées avec les taux D'AUJOURD'HUI : si elles ne collent plus aux montants figés, pas de PDF.
-    const calcul = await lignesDeFacture(facture.id);
-    const { ecart } = ecartAvecFigé(calcul, facture);
-    if (ecart) {
-      return refus(
-        409,
-        `PDF bloqué : un taux horaire a changé depuis l'émission de ${facture.numero}. Les lignes recalculées ne correspondent plus aux montants figés (voir l'alerte sur la page de la facture).`,
-      );
-    }
-
-    const pdf = await genererPdfFacture(
-      { ...facture, client: facture.clients as unknown as DonneesFacturePdf["client"] } as DonneesFacturePdf,
-      calcul,
-    );
-    const apercu = new URL(requete.url).searchParams.get("mode") === "apercu";
-    return new Response(new Uint8Array(pdf), {
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `${apercu ? "inline" : "attachment"}; filename="${facture.numero}.pdf"`,
-        "Cache-Control": "private, no-store",
-      },
-    });
-  } catch (e) {
-    console.error(`PDF ${facture.numero} :`, e);
-    return refus(
-      500,
-      `Le PDF de ${facture.numero} n'a pas pu être produit. Réessayez ; si le problème persiste, prévenez Claude.`,
-    );
-  }
+  const apercu = new URL(requete.url).searchParams.get("mode") === "apercu";
+  return new Response(new Uint8Array(resultat.pdf), {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `${apercu ? "inline" : "attachment"}; filename="${resultat.facture.numero}.pdf"`,
+      "Cache-Control": "private, no-store",
+    },
+  });
 }
