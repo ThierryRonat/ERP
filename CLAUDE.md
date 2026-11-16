@@ -105,6 +105,11 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
   règle d'insertion, actions et API attaquées, validation, base identique avant/après).
 - `node --env-file=.env.local scripts/tester-fiche-collaborateur.mjs` : fiche en consultation (droits, totaux semaine
   et par projet, aucun taux), données jetables, base identique avant/après.
+- `node --env-file=.env.local scripts/tester-finance.mjs` : Finance en contournant l'interface (manager refusé, clé
+  secrète contre les déclencheurs, taux 0 nommé, écart de taux). Ne crée AUCUNE facture ; base identique avant/après.
+- Scripts d'actions : la liste des actions du serveur est relue À CHAQUE APPEL (idActionDe) et la page est chargée si
+  l'action est inconnue (après un redémarrage, le manifeste se complète au fil des compilations).
+- Un test ne cible JAMAIS « le dernier enregistrement de la base » : uniquement les données jetables qu'il a créées.
 - Calculs monétaires : `src/lib/montants.ts` (BigInt au centième, arrondi identique à PostgreSQL). Jamais de float.
 - `node --env-file=.env.local scripts/tester-pdf.mjs [dossier]` : devis piège → PDF téléchargé et son TEXTE relu
   (décodage WinAnsi des flux pdfkit). Nettoie et remet le compteur. Lire aussi le PDF avec l'outil Read (visuel).
@@ -166,6 +171,12 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
   dans `[id]/modifier/page.tsx` avec `creerClientAdmin()` après `exigerAdmin()` ; écriture par la session (RLS).
 - Dates/semaines/heures : `src/lib/dates.ts` (midi UTC, lundi→dimanche, n° ISO ; heures sommées en centièmes).
 - Liste des managers : `managersPossibles()` (src/lib/rh.ts) = même règle que le déclencheur verifier_manager.
+
+## Écran Finance (`src/app/(app)/finance/`, actions `src/lib/actions/finance.ts`, calculs `src/lib/finance-serveur.ts`)
+- Aperçu (?client=&mois=AAAA-MM) et lignes d'une facture calculés côté serveur avec la clé secrète (taux), APRÈS
+  exigerAdmin. Génération = rpc generer_facture (client de session). Détail : montants FIGÉS + lignes recalculées aux
+  taux du jour → alerte « Écart détecté » si différence.
+- FAC-2026-0001 (Axians, nov. 2026, 1 539,00 € TTC) est une VRAIE facture créée en test avec l'accord de l'utilisateur.
 
 ## Organisation du code
 - `src/lib/supabase/serveur.ts` : client au nom de l'utilisateur (RLS appliquée).

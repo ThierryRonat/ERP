@@ -156,6 +156,7 @@ export async function changerStatutTemps(tempsId: string, statut: string): Promi
   if (statut === "valide" && !peutValiderTemps(moi.role)) return { erreur: "Seuls un manager ou un administrateur peuvent valider un temps." };
 
   const supabase = await creerClientServeur();
+  if (await estFacture(supabase, tempsId)) return { erreur: TEMPS_FACTURE };
   const { data, error } = await supabase.from("temps").update({ statut }).eq("id", tempsId).select("id");
   if (error) return { erreur: `Changement impossible : ${messageBase(error.message)}` };
   if (!data?.length) return { erreur: "Temps introuvable, déjà validé, ou modification refusée par la base." };
@@ -171,10 +172,18 @@ export async function supprimerTemps(tempsId: string): Promise<EtatFormulaire> {
   if (!UUID.test(tempsId)) return { erreur: "Temps introuvable." };
 
   const supabase = await creerClientServeur();
+  if (await estFacture(supabase, tempsId)) return { erreur: TEMPS_FACTURE };
   const { data, error } = await supabase.from("temps").delete().eq("id", tempsId).select("id");
   if (error) return { erreur: `Suppression impossible : ${messageBase(error.message)}` };
   if (!data?.length) return { erreur: "Temps introuvable, déjà validé, ou suppression refusée par la base." };
 
   revalidatePath("/rh");
   return { succes: "Temps supprimé." };
+}
+
+// Contrôle CÔTÉ SERVEUR (la base le refait par le déclencheur temps_proteger_facture).
+const TEMPS_FACTURE = "Ce temps est facturé : il ne peut plus être modifié ni supprimé.";
+async function estFacture(supabase: Awaited<ReturnType<typeof creerClientServeur>>, tempsId: string): Promise<boolean> {
+  const { data } = await supabase.from("temps").select("facture_id").eq("id", tempsId).maybeSingle();
+  return Boolean(data?.facture_id);
 }

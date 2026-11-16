@@ -18,8 +18,23 @@ let echecs = 0;
 const verifier = (c, m) => { console.log(`${c ? "✅" : "❌"} ${m}`); if (!c) echecs++; };
 
 // Identifiants techniques des actions (build de développement)
-const manifeste = JSON.parse(readFileSync(".next/dev/server/server-reference-manifest.json", "utf8"));
-const idAction = Object.fromEntries(Object.entries(manifeste.node).map(([id, v]) => [v.exportedName, id]));
+// Liste des actions du serveur RELUE À CHAQUE APPEL : après un redémarrage, elle se complète au fil des compilations.
+const idActionDe = (nom) => {
+  const manifeste = JSON.parse(readFileSync(".next/dev/server/server-reference-manifest.json", "utf8"));
+  const trouve = Object.entries(manifeste.node).find(([, v]) => v.exportedName === nom);
+  if (!trouve) throw new Error(`Action « ${nom} » inconnue du serveur (page pas encore compilée ?)`);
+  return trouve[0];
+};
+/** Si la page n'est pas encore compilée, on la charge une fois (avec le même compte) puis on réessaie. */
+async function idActionAvecCompilation(nom, cookie, chemin) {
+  try {
+    return idActionDe(nom);
+  } catch {
+    await fetch(URL_APP + chemin, { headers: { cookie }, redirect: "manual" });
+    await new Promise((r) => setTimeout(r, 800));
+    return idActionDe(nom);
+  }
+}
 
 async function sessionJetable(role) {
   const email = `jetable-attaque-${role}-${Date.now()}@exemple.test`;
@@ -40,7 +55,7 @@ async function sessionJetable(role) {
 async function appeler(cookie, nomAction, ...args) {
   const r = await fetch(`${URL_APP}/utilisateurs`, {
     method: "POST",
-    headers: { cookie, "Next-Action": idAction[nomAction], Accept: "text/x-component", "Content-Type": "text/plain;charset=UTF-8" },
+    headers: { cookie, "Next-Action": await idActionAvecCompilation(nomAction, cookie, "/utilisateurs"), Accept: "text/x-component", "Content-Type": "text/plain;charset=UTF-8" },
     body: JSON.stringify(args),
     redirect: "manual",
   });

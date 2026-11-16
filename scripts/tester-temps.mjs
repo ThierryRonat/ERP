@@ -21,8 +21,23 @@ const admin = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY, options);
 let echecs = 0;
 const verifier = (c, m) => { console.log(`${c ? "✅" : "❌"} ${m}`); if (!c) echecs++; };
 
-const manifeste = JSON.parse(readFileSync(".next/dev/server/server-reference-manifest.json", "utf8"));
-const idAction = Object.fromEntries(Object.entries(manifeste.node).map(([id, v]) => [v.exportedName, id]));
+// Liste des actions du serveur RELUE À CHAQUE APPEL : après un redémarrage, elle se complète au fil des compilations.
+const idActionDe = (nom) => {
+  const manifeste = JSON.parse(readFileSync(".next/dev/server/server-reference-manifest.json", "utf8"));
+  const trouve = Object.entries(manifeste.node).find(([, v]) => v.exportedName === nom);
+  if (!trouve) throw new Error(`Action « ${nom} » inconnue du serveur (page pas encore compilée ?)`);
+  return trouve[0];
+};
+/** Si la page n'est pas encore compilée, on la charge une fois (avec le même compte) puis on réessaie. */
+async function idActionAvecCompilation(nom, cookie, chemin) {
+  try {
+    return idActionDe(nom);
+  } catch {
+    await fetch(URL_APP + chemin, { headers: { cookie }, redirect: "manual" });
+    await new Promise((r) => setTimeout(r, 800));
+    return idActionDe(nom);
+  }
+}
 
 const comptes = [], fiches = [], projets = [];
 
@@ -48,7 +63,7 @@ async function action(cookie, nom, ...args) {
   const corps = await encodeReply(args);
   const r = await fetch(`${URL_APP}/rh?onglet=temps`, {
     method: "POST",
-    headers: { cookie, "Next-Action": idAction[nom], Accept: "text/x-component",
+    headers: { cookie, "Next-Action": await idActionAvecCompilation(nom, cookie, "/rh?onglet=temps"), Accept: "text/x-component",
       ...(typeof corps === "string" ? { "Content-Type": "text/plain;charset=UTF-8" } : {}) },
     body: corps,
   });

@@ -41,7 +41,7 @@ export default async function PageRH({ searchParams }: PageProps<"/rh">) {
     supabase
       .from("temps")
       .select(
-        "id, collaborateur_id, date_saisie, heures, commentaire, statut, collaborateurs(prenom, nom), projets(nom)",
+        "id, collaborateur_id, date_saisie, heures, commentaire, statut, facture_id, collaborateurs(prenom, nom), projets(nom)",
       )
       .order("date_saisie", { ascending: false })
       .order("created_at", { ascending: false }),
@@ -110,12 +110,17 @@ export default async function PageRH({ searchParams }: PageProps<"/rh">) {
                   const estAuteur = t.collaborateur_id === utilisateur.collaborateurId;
                   // Mêmes règles que la base : l'auteur bascule brouillon ↔ soumis tant que ce n'est pas validé ;
                   // manager et admin choisissent parmi les 3 statuts.
-                  const statutsPossibles: StatutTemps[] = peutValiderTemps(utilisateur.role)
-                    ? [...STATUTS_TEMPS]
-                    : estAuteur && statut !== "valide"
-                      ? [...STATUTS_TEMPS_SAISIE]
-                      : [];
-                  const peutSupprimer = (estAuteur && statut !== "valide") || utilisateur.role === "admin";
+                  // Un temps FACTURÉ est figé (déclencheur temps_proteger_facture) : aucune action proposée.
+                  const facture = Boolean(t.facture_id);
+                  const statutsPossibles: StatutTemps[] = facture
+                    ? []
+                    : peutValiderTemps(utilisateur.role)
+                      ? [...STATUTS_TEMPS]
+                      : estAuteur && statut !== "valide"
+                        ? [...STATUTS_TEMPS_SAISIE]
+                        : [];
+                  const peutSupprimer =
+                    !facture && ((estAuteur && statut !== "valide") || utilisateur.role === "admin");
                   return (
                     <tr key={t.id} className="border-b border-slate-100 last:border-0">
                       <td className="whitespace-nowrap px-4 py-3 text-slate-700">
@@ -139,12 +144,19 @@ export default async function PageRH({ searchParams }: PageProps<"/rh">) {
                       </td>
                       <td className="px-4 py-3 text-slate-700">{t.commentaire ?? "—"}</td>
                       <td className="px-4 py-3">
-                        <ActionsTemps
-                          tempsId={t.id}
-                          statut={statut}
-                          statutsPossibles={statutsPossibles}
-                          peutSupprimer={peutSupprimer}
-                        />
+                        <div className="flex items-center gap-2">
+                          <ActionsTemps
+                            tempsId={t.id}
+                            statut={statut}
+                            statutsPossibles={statutsPossibles}
+                            peutSupprimer={peutSupprimer}
+                          />
+                          {facture && (
+                            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-800">
+                              Facturé
+                            </span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
