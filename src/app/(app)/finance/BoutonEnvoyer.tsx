@@ -68,3 +68,66 @@ export function BoutonEnvoyer({
     </div>
   );
 }
+
+/** Version compacte pour une ligne du tableau des factures (même action, mêmes contrôles). */
+export function BoutonEnvoyerLigne({
+  factureId,
+  numero,
+  emailClient,
+  destinataireTest,
+  bloque,
+  dateEnvoi,
+}: {
+  factureId: string;
+  numero: string;
+  emailClient: string | null;
+  destinataireTest: string | null;
+  bloque: string | null;
+  dateEnvoi: string | null; // AAAA-MM-JJ si déjà envoyée
+}) {
+  const [enCours, demarrer] = useTransition();
+  const [resultat, setResultat] = useState<EtatFormulaire | null>(null);
+  const destinataire = destinataireTest ?? emailClient;
+
+  return (
+    <div className="min-w-32">
+      <button
+        type="button"
+        disabled={enCours || Boolean(bloque)}
+        aria-label={`Envoyer ${numero} par email`}
+        title={
+          bloque
+            ? `Envoi impossible : ${bloque}`
+            : destinataireTest
+              ? `Mode test : envoi vers ${destinataireTest} (le client ne reçoit rien)`
+              : `Envoyer à ${emailClient}`
+        }
+        className="whitespace-nowrap rounded-md bg-blue-700 px-2 py-1 text-xs font-medium text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
+        onClick={() => {
+          if (!window.confirm(`Envoyer ${numero} à ${destinataire}, PDF en pièce jointe ?`)) return;
+          setResultat(null);
+          demarrer(async () => setResultat(await envoyerFacture(factureId)));
+        }}
+      >
+        {enCours ? "Envoi…" : "✉ Envoyer"}
+      </button>
+      {destinataireTest && !bloque && (
+        <span className="ml-1 text-[10px] font-medium uppercase text-amber-700">test</span>
+      )}
+      {dateEnvoi && (
+        <p className="mt-1 text-xs text-slate-500">Envoyée le {dateEnvoi.split("-").reverse().join("/")}</p>
+      )}
+      {bloque && <p className="mt-1 max-w-48 text-xs text-red-700">{bloque}</p>}
+      {resultat?.erreur && (
+        <p role="alert" className="mt-1 max-w-56 text-xs text-red-700">
+          {resultat.erreur}
+        </p>
+      )}
+      {resultat?.succes && (
+        <p role="status" className="mt-1 max-w-56 text-xs text-green-700">
+          {resultat.succes}
+        </p>
+      )}
+    </div>
+  );
+}

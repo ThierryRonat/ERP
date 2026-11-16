@@ -9,6 +9,8 @@ import { BoutonGenerer } from "./BoutonGenerer";
 import { SelecteurStatutFacture } from "./SelecteurStatutFacture";
 import { TableauLignes } from "./TableauLignes";
 import { AlerteMentions, BoutonsPdf } from "./AlerteMentions";
+import { BoutonEnvoyerLigne } from "./BoutonEnvoyer";
+import { configurationEmail } from "@/lib/email";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const champ = "w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm";
@@ -25,10 +27,13 @@ export default async function PageFinance({ searchParams }: PageProps<"/finance"
     supabase.from("clients").select("id, nom").order("nom"),
     supabase
       .from("factures")
-      .select("id, numero, date_emission, date_echeance, periode_debut, total_ht, tva, total_ttc, statut, clients(nom)")
+      .select(
+        "id, numero, date_emission, date_echeance, periode_debut, total_ht, tva, total_ttc, statut, date_envoi, clients(nom, email_contact)",
+      )
       .order("numero", { ascending: false }),
   ]);
 
+  const configEmail = configurationEmail();
   const apercu = clientChoisi ? await apercuFacturable(clientChoisi, premierJour) : null;
   const nomClient = clients?.find((c) => c.id === clientChoisi)?.nom;
 
@@ -130,6 +135,7 @@ export default async function PageFinance({ searchParams }: PageProps<"/finance"
                 <th className="px-4 py-3 text-right font-medium">Total TTC</th>
                 <th className="px-4 py-3 font-medium">Statut</th>
                 <th className="px-4 py-3 font-medium">PDF</th>
+                <th className="px-4 py-3 font-medium">Envoi</th>
               </tr>
             </thead>
             <tbody>
@@ -156,11 +162,28 @@ export default async function PageFinance({ searchParams }: PageProps<"/finance"
                   <td className="px-4 py-3">
                     <BoutonsPdf id={f.id} numero={f.numero} />
                   </td>
+                  <td className="px-4 py-3">
+                    <BoutonEnvoyerLigne
+                      factureId={f.id}
+                      numero={f.numero}
+                      emailClient={
+                        (f.clients as unknown as { email_contact: string | null } | null)?.email_contact ?? null
+                      }
+                      destinataireTest={configEmail.destinataireTest}
+                      bloque={
+                        configEmail.probleme ??
+                        ((f.clients as unknown as { email_contact: string | null } | null)?.email_contact
+                          ? null
+                          : "le client n'a pas d'email de contact.")
+                      }
+                      dateEnvoi={f.date_envoi}
+                    />
+                  </td>
                 </tr>
               ))}
               {factures?.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-4 py-6 text-center text-slate-500">
+                  <td colSpan={10} className="px-4 py-6 text-center text-slate-500">
                     Aucune facture pour l&apos;instant.
                   </td>
                 </tr>
