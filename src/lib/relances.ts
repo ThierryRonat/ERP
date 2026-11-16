@@ -18,16 +18,24 @@ export class ErreurConfigurationRelances extends Error {}
 export function creerClientRelances() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const cle = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-  if (!url) throw new ErreurConfigurationRelances("NEXT_PUBLIC_SUPABASE_URL absente : relances impossibles.");
+  if (!url)
+    throw new ErreurConfigurationRelances(
+      "NEXT_PUBLIC_SUPABASE_URL absente : relances impossibles.",
+    );
   if (!cle)
     throw new ErreurConfigurationRelances(
       "SUPABASE_SERVICE_ROLE_KEY absente : sans clé de service, le planificateur ne verrait AUCUNE facture (règles RLS). Relances arrêtées.",
     );
-  if (cle === process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || cle.startsWith("sb_publishable_"))
+  if (
+    cle === process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    cle.startsWith("sb_publishable_")
+  )
     throw new ErreurConfigurationRelances(
       "SUPABASE_SERVICE_ROLE_KEY contient la clé PUBLIQUE : le planificateur ne verrait aucune facture. Relances arrêtées.",
     );
-  return createClient(url, cle, { auth: { persistSession: false, autoRefreshToken: false } });
+  return createClient(url, cle, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 }
 
 export type ResultatFacture = {
@@ -50,9 +58,14 @@ export type BilanRelances = {
   details: ResultatFacture[];
 };
 
-const jourParis = (iso: string) => new Date(iso).toLocaleDateString("sv-SE", { timeZone: "Europe/Paris" });
+const jourParis = (iso: string) =>
+  new Date(iso).toLocaleDateString("sv-SE", { timeZone: "Europe/Paris" });
 const heureParis = (iso: string) =>
-  new Date(iso).toLocaleTimeString("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" });
+  new Date(iso).toLocaleTimeString("fr-FR", {
+    timeZone: "Europe/Paris",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 const dateFr = (iso: string) => iso.split("-").reverse().join("/");
 
 /**
@@ -61,42 +74,68 @@ const dateFr = (iso: string) => iso.split("-").reverse().join("/");
  * - Un client sans email (ou un PDF bloqué) donne un « échec » pour CETTE facture ; les autres continuent.
  * - La relance est journalisée APRÈS l'envoi réussi, jamais avant.
  */
-export async function traiterRelances({
-  forcer = false,
-  origine,
-}: {
-  forcer?: boolean;
-  origine: string;
-}): Promise<BilanRelances> {
-  const service = creerClientRelances(); // erreur explicite si la clé manque
+/** Pour les TESTS uniquement : remplacer la base, le PDF ou l'envoi par des imitations (rien ne sort). */
+export type OutilsRelances = {
+  client?: ReturnType<typeof creerClientRelances>;
+  pdf?: typeof pdfDeFacture;
+  envoyer?: typeof envoyerEmail;
+};
+
+export async function traiterRelances(
+  { forcer = false, origine }: { forcer?: boolean; origine: string },
+  outils: OutilsRelances = {},
+): Promise<BilanRelances> {
+  const service = outils.client ?? creerClientRelances(); // erreur explicite si la clé manque
+  const fabriquerPdf = outils.pdf ?? pdfDeFacture;
+  const envoyer = outils.envoyer ?? envoyerEmail;
   const jour = aujourdhuiParis();
   const config = configurationEmail();
 
   const { data: factures, error } = await service
     .from("factures")
-    .select("id, numero, statut, date_echeance, total_ttc, clients(nom, email_contact)")
+    .select(
+      "id, numero, statut, date_echeance, total_ttc, clients(nom, email_contact)",
+    )
     .in("statut", ["emise", "envoyee"])
     .lt("date_echeance", jour)
     .order("date_echeance");
-  if (error) throw new Error(`Lecture des factures impossible : ${error.message}`);
+  if (error)
+    throw new Error(`Lecture des factures impossible : ${error.message}`);
 
   // Relances récentes (2 jours suffisent pour savoir si une a déjà eu lieu « aujourd'hui » à Paris)
   const ids = (factures ?? []).map((f) => f.id);
   const depuis = new Date(Date.now() - 2 * 86_400_000).toISOString();
   const { data: recentes } = ids.length
-    ? await service.from("relances").select("facture_id, date_envoi").in("facture_id", ids).gte("date_envoi", depuis)
+    ? await service
+        .from("relances")
+        .select("facture_id, date_envoi")
+        .in("facture_id", ids)
+        .gte("date_envoi", depuis)
     : { data: [] };
   const dejaAujourdhui = new Map<string, string>();
-  for (const r of recentes ?? []) if (jourParis(r.date_envoi) === jour) dejaAujourdhui.set(r.facture_id, r.date_envoi);
+  for (const r of recentes ?? [])
+    if (jourParis(r.date_envoi) === jour)
+      dejaAujourdhui.set(r.facture_id, r.date_envoi);
 
   const details: ResultatFacture[] = [];
   for (const f of factures ?? []) {
-    const client = f.clients as unknown as { nom: string; email_contact: string | null } | null;
-    const ligne = { numero: f.numero, client: client?.nom ?? "—", echeance: f.date_echeance };
+    const client = f.clients as unknown as {
+      nom: string;
+      email_contact: string | null;
+    } | null;
+    const ligne = {
+      numero: f.numero,
+      client: client?.nom ?? "—",
+      echeance: f.date_echeance,
+    };
     try {
       const deja = dejaAujourdhui.get(f.id);
       if (deja && !forcer) {
-        details.push({ ...ligne, resultat: "ignoree", motif: `déjà relancée aujourd'hui à ${heureParis(deja)}` });
+        details.push({
+          ...ligne,
+          resultat: "ignoree",
+          motif: `déjà relancée aujourd'hui à ${heureParis(deja)}`,
+        });
         continue;
       }
       if (!config.pret) {
@@ -105,18 +144,25 @@ export async function traiterRelances({
       }
       const email = client?.email_contact?.trim();
       if (!email) {
-        details.push({ ...ligne, resultat: "echec", motif: `le client ${ligne.client} n'a pas d'email de contact` });
+        details.push({
+          ...ligne,
+          resultat: "echec",
+          motif: `le client ${ligne.client} n'a pas d'email de contact`,
+        });
         continue;
       }
 
-      const pdf = await pdfDeFacture(service, f.id);
+      const pdf = await fabriquerPdf(service, f.id);
       if (!pdf.ok) {
         details.push({ ...ligne, resultat: "echec", motif: pdf.message });
         continue;
       }
 
       const destinataire = config.destinataireTest ?? email;
-      const montant = Number(f.total_ttc).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+      const montant = Number(f.total_ttc).toLocaleString("fr-FR", {
+        style: "currency",
+        currency: "EUR",
+      });
       const texte = [
         "Bonjour,",
         "",
@@ -127,13 +173,17 @@ export async function traiterRelances({
         "Cordialement,",
         ENTREPRISE.raisonSociale,
       ].join("\n");
-      const envoi = await envoyerEmail({
+      const envoi = await envoyer({
         a: destinataire,
         sujet: `${config.destinataireTest ? `[TEST — destinataire réel : ${email}] ` : ""}Rappel — facture ${f.numero} échue — ${ENTREPRISE.raisonSociale}`,
         texte,
         html: texte
           .split("\n")
-          .map((l) => (l ? `<p style="margin:0 0 8px">${l.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</p>` : ""))
+          .map((l) =>
+            l
+              ? `<p style="margin:0 0 8px">${l.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</p>`
+              : "",
+          )
           .join(""),
         pieceJointe: { nom: `${f.numero}.pdf`, contenu: pdf.pdf },
         repondreA: ENTREPRISE.email.trim() || undefined,
@@ -158,7 +208,11 @@ export async function traiterRelances({
           : `envoyée à ${destinataire}${config.destinataireTest ? " (mode test)" : ""}${forcer ? " — forcée" : ""}`,
       });
     } catch (e) {
-      details.push({ ...ligne, resultat: "echec", motif: e instanceof Error ? e.message : String(e) });
+      details.push({
+        ...ligne,
+        resultat: "echec",
+        motif: e instanceof Error ? e.message : String(e),
+      });
     }
   }
 

@@ -224,6 +224,21 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
 - `node --env-file=.env.local scripts/verifier-vercel.mjs <url>` : vérifie le site en ligne sans rien envoyer.
 - Les scripts tester-compte-jetable et tester-facture-pdf acceptent URL_APP=<url> pour tester le site en ligne.
 
+## Relances (`src/lib/relances.ts`, adresse `src/app/api/relances/route.ts`, bloc admin `src/lib/actions/relances.ts`)
+- `traiterRelances()` : factures emise/envoyee avec échéance < aujourd'hui (Paris), client dédié CLÉ DE SERVICE
+  (`creerClientRelances`, erreur EXPLICITE si absente ou égale à la clé publique → 503). Mesuré : clé publique sans
+  session → « permission denied », session non-admin → 0 ligne SANS erreur, clé de service → les factures.
+- Une relance par facture et par jour de Paris ; journal `relances` APRÈS l'envoi réussi ; canal « email (test) » en
+  mode test (anti-doublon appliqué aussi). Un échec (sans email, PDF bloqué, envoi raté, exception) ne touche que SA facture.
+- `/api/relances` (GET/POST) : jeton `RELANCES_SECRET` (.env.local, Vercel, Vault) en `Authorization: Bearer` OU `?secret=`,
+  401 JSON sinon ; exclue du proxy TOUT EN HAUT ; ne force JAMAIS. Forcer = bloc admin seulement.
+- « Rendre une facture échue » : échéance = hier (clé de service après contrôle admin), brouillon → émise. Irréversible.
+  FAC-2026-0001 est échue depuis le 16/11/2026 (échéance 15/11/2026), avec l'accord de l'utilisateur.
+- `node --env-file=.env.local scripts/tester-relances.mjs` : droits, mesure des clés, jetons, anti-doublon (6 appels),
+  forçage ; envoie 2 VRAIS emails vers l'adresse de test (refuse sinon) ; supprime ses relances ; base comparée.
+- `npx --yes tsx --conditions=react-server --tsconfig tsconfig.json --env-file=.env.local scripts/tester-relances-moteur.mts` :
+  moteur sur données imitées (paramètre `outils`), clés absentes, fausse clé Resend sur la vraie base (rien journalisé).
+
 ## Écran Absences (`src/app/(app)/absences/`, actions `src/lib/actions/absences.ts`)
 - Onglets Congés / Notes de frais. Solde affiché ; fiche collaborateur : solde + historique (congés validés).
 - Dépôt du justificatif DEPUIS LE NAVIGATEUR (`src/lib/supabase/navigateur.ts`) dans `justificatifs/<mon id>/<uuid>.<ext>`,
