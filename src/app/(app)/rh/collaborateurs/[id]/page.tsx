@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LIBELLES_TYPE_CONGE, TYPES_DECOMPTES, type TypeConge } from "@/lib/absences";
 import { notFound } from "next/navigation";
 import { obtenirUtilisateurCourant } from "@/lib/session";
 import { creerClientServeur } from "@/lib/supabase/serveur";
@@ -54,12 +55,12 @@ export default async function PageFicheCollaborateur({ params, searchParams }: P
   const supabase = await creerClientServeur();
   const { data: fiche } = await supabase
     .from("collaborateurs")
-    .select("id, nom, prenom, email, poste, date_entree, manager_id")
+    .select("id, nom, prenom, email, poste, date_entree, manager_id, solde_conges")
     .eq("id", id)
     .maybeSingle();
   if (!fiche) notFound(); // inexistante OU masquée par la RLS
 
-  const [{ data: manager }, { data: brut }] = await Promise.all([
+  const [{ data: manager }, { data: brut }, { data: congesValides }] = await Promise.all([
     fiche.manager_id
       ? supabase.from("collaborateurs").select("id, nom, prenom").eq("id", fiche.manager_id).maybeSingle()
       : Promise.resolve({ data: null }),
@@ -69,6 +70,14 @@ export default async function PageFicheCollaborateur({ params, searchParams }: P
       .eq("collaborateur_id", id)
       .order("date_saisie", { ascending: false })
       .order("created_at", { ascending: false }),
+    // Historique des mouvements du solde = les congés VALIDÉS eux-mêmes (aucune table dédiée).
+    // conges pointe deux fois vers collaborateurs : on précise la colonne (sinon PGRST201).
+    supabase
+      .from("conges")
+      .select("id, type, date_debut, date_fin, nb_jours, motif, validateur:collaborateurs!valide_par(prenom, nom)")
+      .eq("collaborateur_id", id)
+      .eq("statut", "validee")
+      .order("date_debut", { ascending: false }),
   ]);
   const temps: LigneTemps[] = (brut ?? []).map((t) => ({
     ...t,
@@ -169,6 +178,59 @@ export default async function PageFicheCollaborateur({ params, searchParams }: P
           lien={manager ? `/rh/collaborateurs/${manager.id}` : undefined}
         />
       </dl>
+
+      {/* ── Congés : solde STOCKÉ (décrémenté à chaque validation) + historique = congés validés ── */}
+      <div>
+        <h2 className="mb-3 text-lg font-semibold">Congés</h2>
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="rounded-lg border border-slate-200 bg-white px-5 py-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">Solde de congés</p>
+            <p className="text-3xl font-semibold tabular-nums" data-testid="solde-conges">
+              {formaterHeures(enCentiemes(fiche.solde_conges ?? 0))}
+              <span className="ml-1 text-base font-normal text-slate-500">jour(s)</span>
+            </p>
+          </div>
+          <div className="min-w-72 flex-1 overflow-x-auto rounded-lg border border-slate-200 bg-white">
+            <table className="w-full text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+                <tr>
+                  <th className="px-4 py-2 text-left font-medium">Congé validé</th>
+                  <th className="px-4 py-2 text-left font-medium">Période</th>
+                  <th className="px-4 py-2 text-right font-medium">Jours</th>
+                  <th className="px-4 py-2 text-right font-medium">Effet sur le solde</th>
+                  <th className="px-4 py-2 text-left font-medium">Validé par</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(congesValides ?? []).map((c) => {
+                  const decompte = TYPES_DECOMPTES.includes(c.type as TypeConge);
+                  const v = c.validateur as unknown as { prenom: string | null; nom: string } | null;
+                  return (
+                    <tr key={c.id} className="border-b border-slate-100 last:border-0" data-testid="conge-valide">
+                      <td className="px-4 py-2 text-slate-900">{LIBELLES_TYPE_CONGE[c.type as TypeConge]}</td>
+                      <td className="whitespace-nowrap px-4 py-2 text-slate-700">
+                        {formaterDate(c.date_debut)} → {formaterDate(c.date_fin)}
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums">{formaterHeures(enCentiemes(c.nb_jours))}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">
+                        {decompte ? `− ${formaterHeures(enCentiemes(c.nb_jours))}` : "aucun"}
+                      </td>
+                      <td className="px-4 py-2 text-slate-700">{v ? nomComplet(v) : "—"}</td>
+                    </tr>
+                  );
+                })}
+                {(congesValides ?? []).length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-4 text-center text-slate-500">
+                      Aucun congé validé.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
       {/* ── Semaine ── */}
       <div>

@@ -123,6 +123,8 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
 - Un test ne cible JAMAIS « le dernier enregistrement de la base » : uniquement les données jetables qu'il a créées.
 - `node --env-file=.env.local scripts/tester-facture-pdf.mjs [dossier]` : PDF de la dernière facture relu (montants,
   dates, mentions, aucun « / »), 401/403/404/409. Ne crée aucune facture.
+- `node --env-file=.env.local scripts/tester-conges.mjs` : congés en contournant l'interface (validation appelée 2 fois
+  de suite PUIS 2 fois en même temps → décompte unique, refus après validation, clé secrète, PGRST201, solde affiché).
 - Calculs monétaires : `src/lib/montants.ts` (BigInt au centième, arrondi identique à PostgreSQL). Jamais de float.
 - `node --env-file=.env.local scripts/tester-pdf.mjs [dossier]` : devis piège → PDF téléchargé et son TEXTE relu
   (décodage WinAnsi des flux pdfkit). Nettoie et remet le compteur. Lire aussi le PDF avec l'outil Read (visuel).
