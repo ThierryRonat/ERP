@@ -236,6 +236,15 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
   FAC-2026-0001 est échue depuis le 16/11/2026 (échéance 15/11/2026), avec l'accord de l'utilisateur.
 - En ligne VÉRIFIÉ le 17/11/2026 : 401 sans jeton (pas de redirection), relance envoyée + journalisée une fois, 2e appel
   ignoré, test en navigation privée OK. Pour donner le jeton : le copier avec pbcopy (jamais l'afficher), adresse complète.
+- Planification (migration `relances_cron`, appliquée le 17/11/2026) : pg_cron + pg_net, tâche `relances-factures`
+  `*/5 * * * *` → POST /api/relances, jeton lu à chaque passage dans `vault.decrypted_secrets` (secret `relances_secret`,
+  créé par l'utilisateur dans Integrations → Vault ; doit rester IDENTIQUE à RELANCES_SECRET de Vercel, sinon 401).
+  Assertions : extensions, secret ≥ 32, tâche unique, jeton absent de cron.job, photo des 13 tables avant/après.
+  `public.etat_relances_cron()` (security definer, service_role SEULEMENT) : tâche, passages, réponses HTTP.
+  `node --env-file=.env.local scripts/verifier-cron.mjs [--attendre]` : dernier passage + réponse (200 attendu).
+  Essai local : `essai-sql/essayer-cron.mjs` (pg_cron/pg_net/Vault imités, 8 sabotages).
+  Arrêt : `select cron.unschedule('relances-factures');` ; pause : `cron.alter_job(<jobid>, active := false)`.
+  Tant que FAC-2026-0001 n'est pas payée : 1 rappel par jour vers l'adresse de test.
 - `node --env-file=.env.local scripts/tester-relances.mjs` : droits, mesure des clés, jetons, anti-doublon (6 appels),
   forçage ; envoie 2 VRAIS emails vers l'adresse de test (refuse sinon) ; supprime ses relances ; base comparée.
 - `npx --yes tsx --conditions=react-server --tsconfig tsconfig.json --env-file=.env.local scripts/tester-relances-moteur.mts` :
