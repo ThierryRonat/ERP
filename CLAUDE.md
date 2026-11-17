@@ -219,7 +219,7 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
 ## Vercel (mise en ligne)
 - Production : https://erp-ashen-six.vercel.app (publique). Les adresses de déploiement (`erp-xxxx-mission-webdev…`)
   restent protégées par Vercel Authentication (« Standard Protection »).
-- Variables Vercel : les 3 Supabase + RESEND_API_KEY, EMAIL_EXPEDITEUR, EMAIL_DESTINATAIRE_TEST. Après tout ajout ou
+- Variables Vercel : les 3 Supabase + RESEND_API_KEY, EMAIL_EXPEDITEUR, EMAIL_DESTINATAIRE_TEST, RELANCES_SECRET (17/11/2026). Après tout ajout ou
   changement : Deployments → … → Redeploy (sinon l'ancienne version garde les anciennes variables).
 - `node --env-file=.env.local scripts/verifier-vercel.mjs <url>` : vérifie le site en ligne sans rien envoyer.
 - Les scripts tester-compte-jetable et tester-facture-pdf acceptent URL_APP=<url> pour tester le site en ligne.
@@ -234,6 +234,8 @@ Ne créer aucune table, n'en renommer aucune, n'ajouter aucune colonne **sans de
   401 JSON sinon ; exclue du proxy TOUT EN HAUT ; ne force JAMAIS. Forcer = bloc admin seulement.
 - « Rendre une facture échue » : échéance = hier (clé de service après contrôle admin), brouillon → émise. Irréversible.
   FAC-2026-0001 est échue depuis le 16/11/2026 (échéance 15/11/2026), avec l'accord de l'utilisateur.
+- En ligne VÉRIFIÉ le 17/11/2026 : 401 sans jeton (pas de redirection), relance envoyée + journalisée une fois, 2e appel
+  ignoré, test en navigation privée OK. Pour donner le jeton : le copier avec pbcopy (jamais l'afficher), adresse complète.
 - `node --env-file=.env.local scripts/tester-relances.mjs` : droits, mesure des clés, jetons, anti-doublon (6 appels),
   forçage ; envoie 2 VRAIS emails vers l'adresse de test (refuse sinon) ; supprime ses relances ; base comparée.
 - `npx --yes tsx --conditions=react-server --tsconfig tsconfig.json --env-file=.env.local scripts/tester-relances-moteur.mts` :
